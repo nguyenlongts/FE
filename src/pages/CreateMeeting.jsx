@@ -14,7 +14,6 @@ import {
   Eye,
   EyeOff,
   Plus,
-  X,
 } from "lucide-react";
 
 function CreateMeeting() {
@@ -52,15 +51,6 @@ function CreateMeeting() {
     }
   };
 
-  const generateRoomCode = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let code = "MTG-";
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-  };
-
   const validateForm = () => {
     const newErrors = {};
 
@@ -94,49 +84,55 @@ function CreateMeeting() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      const roomCode = generateRoomCode();
-      const currentUser = {
-        id: 1,
-        name: "Nguyễn Văn A",
-        email: "user@example.com",
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        hostName: user.email || "Host",
+        scheduledDate: formData.scheduledDate,
+        scheduledTime: formData.scheduledTime,
+        duration: Number(formData.duration),
+        isPasswordProtected: formData.isPasswordProtected,
+        password: formData.isPasswordProtected ? formData.password : "",
       };
+      console.log("Payload gửi đi:", {
+        title: formData.title,
+        description: formData.description,
+        hostName: user.email,
+        scheduledDate: formData.scheduledDate,
+        scheduledTime: formData.scheduledTime,
+        duration: Number(formData.duration),
+        isPasswordProtected: formData.isPasswordProtected,
+        password: formData.isPasswordProtected ? formData.password : "",
+      });
 
-      const meeting = {
-        id: Date.now(),
-        roomCode: roomCode,
-        hostId: currentUser.id,
-        hostName: currentUser.name,
-        ...formData,
-        status: "waiting_for_host", // Trạng thái chờ host
-        createdAt: new Date().toISOString(),
-        meetingLink: `${window.location.origin}/meeting/${roomCode}`,
-        hostJoinLink: `${
-          window.location.origin
-        }/meeting/${roomCode}?host=true&token=${btoa(
-          currentUser.id.toString()
-        )}`,
-      };
+      const response = await fetch("http://localhost:5110/api/Meeting", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-      setCreatedMeeting(meeting);
-      setShowSuccess(true);
+      const result = await response.json();
+
+      if (result.returnCode === 200) {
+        setCreatedMeeting(result.data);
+        setShowSuccess(true);
+      } else {
+        alert("Tạo phòng họp thất bại: " + result.message);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Đã có lỗi xảy ra khi tạo phòng họp");
+    } finally {
       setIsLoading(false);
-
-      // Save to localStorage for demo
-      const existingMeetings = JSON.parse(
-        localStorage.getItem("meetings") || "[]"
-      );
-      existingMeetings.push(meeting);
-      localStorage.setItem("meetings", JSON.stringify(existingMeetings));
-    }, 1500);
+    }
   };
 
   const handleCopyLink = (link, type) => {
@@ -146,7 +142,6 @@ function CreateMeeting() {
 
   const handleStartMeeting = () => {
     if (createdMeeting) {
-      // Redirect to meeting room as host
       window.location.href = createdMeeting.hostJoinLink;
     }
   };
@@ -156,7 +151,6 @@ function CreateMeeting() {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-3xl mx-auto px-4">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            {/* Success Header */}
             <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-8 text-white text-center">
               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
                 <Check className="w-10 h-10 text-green-600" />
@@ -167,19 +161,40 @@ function CreateMeeting() {
               <p className="text-green-100">Bạn là Host của phòng họp này</p>
             </div>
 
-            {/* Meeting Info */}
-            <div className="p-8">
-              <div className="mb-6">
+            <div className="p-8 space-y-6">
+              {/* Thông tin cơ bản */}
+              <div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
                   {createdMeeting.title}
                 </h3>
                 {createdMeeting.description && (
-                  <p className="text-gray-600">{createdMeeting.description}</p>
+                  <p className="text-gray-600 mb-2">
+                    {createdMeeting.description}
+                  </p>
+                )}
+                <p className="text-gray-700">
+                  <span className="font-semibold">Ngày họp:</span>{" "}
+                  {new Date(createdMeeting.scheduledDate).toLocaleDateString()}{" "}
+                  {createdMeeting.scheduledTime}
+                </p>
+                <p className="text-gray-700">
+                  <span className="font-semibold">Thời lượng:</span>{" "}
+                  {createdMeeting.duration} phút
+                </p>
+                <p className="text-gray-700">
+                  <span className="font-semibold">Bảo vệ mật khẩu:</span>{" "}
+                  {createdMeeting.isPasswordProtected ? "Có" : "Không"}
+                </p>
+                {createdMeeting.isPasswordProtected && (
+                  <p className="text-gray-700">
+                    <span className="font-semibold">Mật khẩu:</span>{" "}
+                    {createdMeeting.password}
+                  </p>
                 )}
               </div>
 
-              {/* Room Code */}
-              <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6 mb-6">
+              {/* Mã phòng họp */}
+              <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-indigo-600 font-medium mb-1">
@@ -191,7 +206,7 @@ function CreateMeeting() {
                   </div>
                   <button
                     onClick={() =>
-                      handleCopyLink(createdMeeting.roomCode, "code")
+                      navigator.clipboard.writeText(createdMeeting.roomCode)
                     }
                     className="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
                   >
@@ -200,68 +215,11 @@ function CreateMeeting() {
                 </div>
               </div>
 
-              {/* Important Notice - Host Required */}
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                <div className="flex items-start">
-                  <AlertCircle className="w-6 h-6 text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-yellow-900 mb-1">
-                      ⚠️ Quan trọng: Chỉ Host mới có thể khởi động phòng họp
-                    </h4>
-                    <p className="text-sm text-yellow-800 mb-2">
-                      Người tham gia khác sẽ phải chờ trong phòng chờ cho đến
-                      khi bạn (Host) tham gia và bắt đầu cuộc họp.
-                    </p>
-                    <ul className="text-sm text-yellow-800 space-y-1">
-                      <li>
-                        ✓ Bạn phải tham gia đầu tiên để khởi động phòng họp
-                      </li>
-                      <li>
-                        ✓ Sử dụng <strong>Link Host</strong> bên dưới để tham
-                        gia với quyền Host
-                      </li>
-                      <li>
-                        ✓ Người khác có thể tham gia sau khi bạn đã vào phòng
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Host Link */}
-              <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                  <Shield className="w-4 h-4 mr-2 text-yellow-600" />
-                  Link Host (Dành riêng cho bạn)
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={createdMeeting.hostJoinLink}
-                    readOnly
-                    className="flex-1 px-4 py-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg font-mono text-sm"
-                  />
-                  <button
-                    onClick={() =>
-                      handleCopyLink(createdMeeting.hostJoinLink, "host")
-                    }
-                    className="px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition flex items-center space-x-2"
-                  >
-                    <Copy className="w-5 h-5" />
-                    <span>Copy</span>
-                  </button>
-                </div>
-                <p className="text-xs text-yellow-700 mt-1">
-                  ⚠️ Không chia sẻ link này cho người khác. Link này cho phép
-                  bạn vào với quyền Host.
-                </p>
-              </div>
-
-              {/* Meeting Link for Participants */}
-              <div className="mb-6">
+              {/* Link Meeting */}
+              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
                   <Link className="w-4 h-4 mr-2 text-indigo-600" />
-                  Link Meeting (Chia sẻ cho người tham gia)
+                  Link Meeting
                 </label>
                 <div className="flex space-x-2">
                   <input
@@ -272,7 +230,7 @@ function CreateMeeting() {
                   />
                   <button
                     onClick={() =>
-                      handleCopyLink(createdMeeting.meetingLink, "meeting")
+                      navigator.clipboard.writeText(createdMeeting.meetingLink)
                     }
                     className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center space-x-2"
                   >
@@ -280,62 +238,14 @@ function CreateMeeting() {
                     <span>Copy</span>
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Người tham gia sẽ vào phòng chờ cho đến khi bạn bắt đầu cuộc
-                  họp.
-                </p>
               </div>
 
-              {/* Meeting Details */}
-              <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-                {createdMeeting.scheduledDate && (
-                  <div className="flex items-center space-x-2 text-gray-700">
-                    <Calendar className="w-5 h-5 text-indigo-600" />
-                    <div>
-                      <p className="text-xs text-gray-500">Ngày</p>
-                      <p className="font-medium">
-                        {createdMeeting.scheduledDate}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {createdMeeting.scheduledTime && (
-                  <div className="flex items-center space-x-2 text-gray-700">
-                    <Clock className="w-5 h-5 text-indigo-600" />
-                    <div>
-                      <p className="text-xs text-gray-500">Giờ</p>
-                      <p className="font-medium">
-                        {createdMeeting.scheduledTime}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-center space-x-2 text-gray-700">
-                  <Clock className="w-5 h-5 text-indigo-600" />
-                  <div>
-                    <p className="text-xs text-gray-500">Thời lượng</p>
-                    <p className="font-medium">
-                      {createdMeeting.duration} phút
-                    </p>
-                  </div>
-                </div>
-                {createdMeeting.isPasswordProtected && (
-                  <div className="flex items-center space-x-2 text-gray-700">
-                    <Lock className="w-5 h-5 text-indigo-600" />
-                    <div>
-                      <p className="text-xs text-gray-500">Mật khẩu</p>
-                      <p className="font-medium font-mono">
-                        {createdMeeting.password}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
+              {/* Button hành động */}
               <div className="flex space-x-4">
                 <button
-                  onClick={handleStartMeeting}
+                  onClick={() =>
+                    (window.location.href = createdMeeting.hostJoinLink)
+                  }
                   className="flex-1 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition font-semibold flex items-center justify-center space-x-2 shadow-lg"
                 >
                   <Video className="w-5 h-5" />
@@ -347,23 +257,6 @@ function CreateMeeting() {
                 >
                   Về Dashboard
                 </button>
-              </div>
-
-              {/* Additional Info */}
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
-                  <AlertCircle className="w-5 h-5 mr-2" />
-                  Lưu ý khi làm Host:
-                </h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Bạn cần tham gia trước để khởi động phòng họp</li>
-                  <li>
-                    • Người tham gia khác sẽ ở phòng chờ cho đến khi bạn vào
-                  </li>
-                  <li>• Bạn có quyền chấp nhận/từ chối người tham gia</li>
-                  <li>• Bạn có thể tắt micro/camera của người khác</li>
-                  <li>• Chỉ Host mới có thể bắt đầu ghi âm</li>
-                </ul>
               </div>
             </div>
           </div>

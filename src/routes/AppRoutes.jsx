@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Context
 import { AuthProvider } from "../context/AuthContext";
-
+import PublicRoute from "../components/PublicRoute";
 // Components
 import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -24,10 +24,11 @@ function AppRoutes() {
       <AuthProvider>
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-
+          <Route element={<PublicRoute />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
           {/* Protected Routes */}
           <Route
             path="/dashboard"
