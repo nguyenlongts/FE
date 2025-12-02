@@ -1,251 +1,592 @@
-import React, { useState } from "react";
-import {
-  Video,
-  Calendar,
-  Clock,
-  Users,
-  Lock,
-  Link,
-  Settings,
-  Copy,
-  Check,
-  AlertCircle,
-  Shield,
-  Eye,
-  EyeOff,
-  Plus,
-} from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { AlertCircle, Clock, CheckCircle } from "lucide-react";
 
-function CreateMeeting() {
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    scheduledDate: "",
-    scheduledTime: "",
-    duration: "60",
-    maxParticipants: "",
-    isPasswordProtected: false,
-    password: "",
-    requireHostToStart: true,
-    allowGuestJoin: true,
-    enableWaitingRoom: false,
-    enableRecording: false,
-    muteParticipantsOnEntry: false,
+function MeetingRoom() {
+  const { roomName } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const savedUser = localStorage.getItem("user");
+  const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+
+  const searchParams = new URLSearchParams(location.search);
+  const guestName = searchParams.get("guest");
+
+  // ✅ REMOVE: Không lấy isModerator từ query params nữa
+  // const isModerator = searchParams.get("moderator") === "true";
+
+  // ✅ NEW: Track isModerator từ API response
+  const [isModerator, setIsModerator] = useState(false);
+
+  const userName =
+    parsedUser?.name || sessionStorage.getItem("guestName") || "Guest";
+  const userEmail = parsedUser?.email || "guest@example.com";
+
+  useEffect(() => {
+    if (location.search) {
+      navigate(`/meeting/${roomName}`, { replace: true });
+    }
+  }, [location.search, navigate, roomName]);
+
+  const hasNavigated = useRef(false);
+  const [isJitsiLoaded, setIsJitsiLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [meetingStatus, setMeetingStatus] = useState({
+    isChecking: true,
+    requireHostToStart: false,
+    isStarted: false,
+    hostName: "",
   });
+  const [waitingTime, setWaitingTime] = useState(0);
+  const [hostEndedMeeting, setHostEndedMeeting] = useState(false);
 
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [createdMeeting, setCreatedMeeting] = useState(null);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const jitsiContainerRef = useRef(null);
+  const apiRef = useRef(null);
+  const pollIntervalRef = useRef(null);
+  const hostEndPollRef = useRef(null); // ✅ NEW: Poll để check host end meeting
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
+  const JAAS_CONFIG = {
+    appId: "vpaas-magic-cookie-e17fdac567914126bc4b82b9f3b4c787",
+    domain: "8x8.vc",
+    apiUrl: "http://localhost:5110/api/Jaas/generate-token",
+    meetingStatusUrl: "http://localhost:5110/api/Meeting",
   };
 
-  const validateForm = () => {
-    const newErrors = {};
+  // ✅ 1. CHECK MEETING STATUS & DETERMINE IF USER IS HOST
+  useEffect(() => {
+    const checkAndStartMeeting = async () => {
+      try {
+        console.log("🔍 Checking meeting status for room:", roomName);
 
-    if (!formData.title.trim()) {
-      newErrors.title = "Tiêu đề không được để trống";
-    }
+        const response = await fetch(
+          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`
+        );
 
-    if (formData.scheduledDate) {
-      const selectedDate = new Date(formData.scheduledDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+        if (!response.ok) {
+          throw new Error(
+            `HTTP ${response.status}: Không thể lấy thông tin phòng họp`
+          );
+        }
 
-      if (selectedDate < today) {
-        newErrors.scheduledDate = "Ngày họp không được là ngày trong quá khứ";
+        const result = await response.json();
+        console.log("📊 Meeting status response:", result);
+
+        if (result.returnCode !== 200) {
+          throw new Error(
+            result.message || "Không thể lấy thông tin phòng họp"
+          );
+        }
+
+        const data = result.data;
+
+        // ✅ CHECK IF CURRENT USER IS HOST
+        const isUserHost = data.hostName === userEmail;
+        setIsModerator(isUserHost);
+
+        console.log("👤 User info:", {
+          userEmail,
+          hostName: data.hostName,
+          isHost: isUserHost,
+        });
+
+        setMeetingStatus({
+          isChecking: false,
+          requireHostToStart: data.requireHostToStart || false,
+          isStarted: data.isStarted || false,
+          hostName: data.hostName || "",
+        });
+
+        // ✅ If user is host and meeting not started, auto start
+        if (isUserHost && !data.isStarted) {
+          console.log("🎯 Host detected, starting meeting...");
+
+          const startResponse = await fetch(
+            `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/start`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(userEmail),
+            }
+          );
+
+          const startResult = await startResponse.json();
+          console.log("▶️ Start meeting response:", startResult);
+
+          if (startResult.returnCode === 200) {
+            setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
+            console.log("✅ Meeting started successfully");
+          }
+        }
+      } catch (error) {
+        console.error("❌ Error checking meeting status:", error);
+        setLoadError(error.message);
+        setMeetingStatus((prev) => ({ ...prev, isChecking: false }));
       }
+    };
+
+    if (roomName) {
+      checkAndStartMeeting();
+    }
+  }, [roomName, userEmail]);
+
+  // ✅ 2. POLL FOR HOST JOIN (if waiting)
+  useEffect(() => {
+    if (
+      meetingStatus.isChecking ||
+      meetingStatus.isStarted ||
+      isModerator ||
+      !meetingStatus.requireHostToStart
+    ) {
+      return;
     }
 
-    if (formData.isPasswordProtected && !formData.password) {
-      newErrors.password = "Vui lòng nhập mật khẩu";
-    } else if (formData.isPasswordProtected && formData.password.length < 4) {
-      newErrors.password = "Mật khẩu phải có ít nhất 4 ký tự";
+    console.log("⏳ Starting to poll for host join...");
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`
+        );
+
+        if (!response.ok) return;
+
+        const result = await response.json();
+
+        if (result.returnCode === 200 && result.data.isStarted) {
+          console.log("✅ Host has joined! Meeting started.");
+          setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
+
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+        }
+      } catch (error) {
+        console.error("Error polling meeting status:", error);
+      }
+    }, 3000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [meetingStatus, roomName, isModerator]);
+
+  // ✅ 3. POLL TO CHECK IF HOST ENDED MEETING (for participants only)
+  useEffect(() => {
+    // Only participants need to monitor if host ended meeting
+    if (isModerator || !meetingStatus.isStarted) {
+      return;
     }
 
-    if (formData.maxParticipants && formData.maxParticipants < 2) {
-      newErrors.maxParticipants = "Số người tham gia tối thiểu là 2";
+    console.log("👀 Participant: Monitoring if host ends meeting...");
+
+    hostEndPollRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`
+        );
+
+        if (!response.ok) return;
+
+        const result = await response.json();
+
+        // ✅ Nếu host đã end meeting (isStarted = false)
+        if (result.returnCode === 200 && !result.data.isStarted) {
+          console.log("🚫 Host has ended the meeting!");
+          setHostEndedMeeting(true);
+
+          // Clear polling
+          if (hostEndPollRef.current) {
+            clearInterval(hostEndPollRef.current);
+            hostEndPollRef.current = null;
+          }
+
+          // Dispose Jitsi và redirect
+          if (apiRef.current) {
+            try {
+              apiRef.current.executeCommand("hangup");
+              apiRef.current.dispose();
+              apiRef.current = null;
+            } catch (error) {
+              console.error("Error disposing Jitsi:", error);
+            }
+          }
+
+          // Redirect sau 2 giây
+          setTimeout(() => {
+            handleMeetingEnd();
+          }, 2000);
+        }
+      } catch (error) {
+        console.error("Error checking host end status:", error);
+      }
+    }, 2000); // Check every 2 seconds
+
+    return () => {
+      if (hostEndPollRef.current) {
+        clearInterval(hostEndPollRef.current);
+        hostEndPollRef.current = null;
+      }
+    };
+  }, [meetingStatus, roomName, isModerator]);
+
+  // ✅ 4. WAITING TIME COUNTER
+  useEffect(() => {
+    if (
+      !meetingStatus.isStarted &&
+      meetingStatus.requireHostToStart &&
+      !isModerator
+    ) {
+      const timer = setInterval(() => {
+        setWaitingTime((prev) => prev + 1);
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [meetingStatus, isModerator]);
+
+  // ✅ 5. INITIALIZE JITSI when meeting is ready
+  useEffect(() => {
+    if (meetingStatus.isChecking) {
+      console.log("⏳ Still checking meeting status...");
+      return;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    if (
+      meetingStatus.requireHostToStart &&
+      !meetingStatus.isStarted &&
+      !isModerator
+    ) {
+      console.log("⏸️ Waiting for host to start...");
+      return;
+    }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+    console.log("🚀 Initializing Jitsi Meet...");
 
-    setIsLoading(true);
+    const loadJitsiScript = () => {
+      if (window.JitsiMeetExternalAPI) {
+        initJitsi();
+        return;
+      }
 
-    try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const payload = {
-        title: formData.title,
-        description: formData.description,
-        hostName: user.email || "Host",
-        scheduledDate: formData.scheduledDate,
-        scheduledTime: formData.scheduledTime,
-        duration: Number(formData.duration),
-        isPasswordProtected: formData.isPasswordProtected,
-        password: formData.isPasswordProtected ? formData.password : "",
+      const script = document.createElement("script");
+      script.src = `https://8x8.vc/${JAAS_CONFIG.appId}/external_api.js`;
+      script.async = true;
+      script.onload = () => {
+        console.log("✅ Jitsi script loaded");
+        setIsJitsiLoaded(true);
+        initJitsi();
       };
+      script.onerror = () => {
+        setLoadError(
+          "Không thể tải Jitsi Meet. Vui lòng kiểm tra kết nối internet."
+        );
+      };
+      document.body.appendChild(script);
+    };
 
-      const response = await fetch("http://localhost:5110/api/Meeting", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+    const initJitsi = async () => {
+      if (!jitsiContainerRef.current || apiRef.current) return;
 
-      const result = await response.json();
+      try {
+        const displayName = userName || guestName || "Người dùng";
+        console.log("👤 Joining as:", displayName, "| Moderator:", isModerator);
 
-      if (result.returnCode === 200) {
-        setCreatedMeeting(result.data);
-        setShowSuccess(true);
-      } else {
-        alert("Tạo phòng họp thất bại: " + result.message);
+        const res = await fetch(JAAS_CONFIG.apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            roomName: roomName,
+            userName: displayName,
+            email: `${displayName
+              .toLowerCase()
+              .replace(/\s/g, "")}@example.com`,
+            avatarUrl: "",
+            isModerator: isModerator,
+            expiresInMinutes: 120,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(
+            errorData.error || `HTTP ${res.status}: Không lấy được token`
+          );
+        }
+
+        const data = await res.json();
+
+        if (!data.success || !data.token) {
+          throw new Error("Token không hợp lệ trong response");
+        }
+
+        const jwt = data.token;
+        const appId = data.appId;
+        const fullRoomName = data.roomName;
+
+        console.log("🎫 JWT token obtained, initializing conference...");
+
+        const options = {
+          roomName: `${appId}/${fullRoomName}`,
+          width: "100%",
+          height: "100%",
+          parentNode: jitsiContainerRef.current,
+          jwt: jwt,
+          configOverwrite: {
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+            enableWelcomePage: false,
+            prejoinPageEnabled: false,
+            disableDeepLinking: true,
+            enableNoisyMicDetection: true,
+            enableClosePage: false,
+            disableThirdPartyRequests: true,
+          },
+          interfaceConfigOverwrite: {
+            SHOW_JITSI_WATERMARK: false,
+            SHOW_WATERMARK_FOR_GUESTS: false,
+            SHOW_BRAND_WATERMARK: false,
+            MOBILE_APP_PROMO: false,
+            TOOLBAR_BUTTONS: [
+              "microphone",
+              "camera",
+              "closedcaptions",
+              "desktop",
+              "fullscreen",
+              "fodeviceselection",
+              "hangup",
+              "profile",
+              "chat",
+              "recording",
+              "livestreaming",
+              "sharedvideo",
+              "settings",
+              "raisehand",
+              "videoquality",
+              "filmstrip",
+              "stats",
+              "shortcuts",
+              "tileview",
+              "download",
+              "help",
+            ],
+          },
+          userInfo: {
+            displayName: displayName,
+          },
+        };
+
+        apiRef.current = new window.JitsiMeetExternalAPI(
+          JAAS_CONFIG.domain,
+          options
+        );
+
+        apiRef.current.addEventListener("videoConferenceJoined", (event) => {
+          console.log("✅ Joined conference successfully");
+          setIsJitsiLoaded(true);
+        });
+
+        // ✅ Khi host click End Meeting button
+        apiRef.current.addEventListener("videoConferenceLeft", async () => {
+          console.log("👋 Left conference");
+
+          // Nếu là host, gọi API để end meeting cho tất cả
+          if (isModerator) {
+            try {
+              console.log("🚫 Host is ending meeting for everyone...");
+
+              // ✅ Lấy token từ localStorage
+              const token = localStorage.getItem("token");
+
+              if (!token) {
+                console.warn(
+                  "⚠️ No token found, skipping end meeting API call"
+                );
+                handleMeetingEnd();
+                return;
+              }
+
+              const response = await fetch(
+                `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/end`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                  // ✅ Body không cần thiết vì API lấy email từ JWT Claims
+                  // body: JSON.stringify(userEmail),
+                }
+              );
+
+              if (!response.ok) {
+                console.error("❌ Failed to end meeting:", response.status);
+                handleMeetingEnd();
+                return;
+              }
+
+              const result = await response.json();
+              console.log("✅ Meeting ended by host:", result);
+            } catch (error) {
+              console.error("Error ending meeting:", error);
+            }
+          }
+
+          handleMeetingEnd();
+        });
+
+        apiRef.current.addEventListener("readyToClose", () => {
+          console.log("🚪 Ready to close");
+          handleMeetingEnd();
+        });
+
+        apiRef.current.addEventListener("errorOccurred", (error) => {
+          console.error("Jitsi error:", error);
+        });
+      } catch (error) {
+        console.error("❌ Lỗi khởi tạo Jitsi:", error);
+        setLoadError(
+          error.message || "Không thể khởi tạo phòng họp. Vui lòng thử lại."
+        );
       }
-    } catch (error) {
-      console.error(error);
-      alert("Đã có lỗi xảy ra khi tạo phòng họp");
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    loadJitsiScript();
+
+    return () => {
+      if (apiRef.current) {
+        try {
+          apiRef.current.dispose();
+          apiRef.current = null;
+        } catch (error) {
+          console.error("Lỗi khi cleanup:", error);
+        }
+      }
+    };
+  }, [roomName, userName, guestName, isModerator, meetingStatus]);
+
+  const handleMeetingEnd = () => {
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
+
+    console.log("🔚 Meeting ended, redirecting...");
+
+    setTimeout(() => {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser != null) {
+        navigate("/user/dashboard");
+      } else {
+        navigate("/");
+      }
+    }, 1000);
   };
 
-  const handleCopyLink = (link, type) => {
-    navigator.clipboard.writeText(link);
-    alert(`Đã copy ${type === "host" ? "link Host" : "link Meeting"}!`);
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleStartMeeting = () => {
-    if (createdMeeting) {
-      window.location.href = createdMeeting.hostJoinLink;
-    }
-  };
-
-  if (showSuccess && createdMeeting) {
+  // ✅ HOST ENDED MEETING NOTIFICATION (for participants)
+  if (hostEndedMeeting) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-8 text-white text-center">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
-                <Check className="w-10 h-10 text-green-600" />
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-red-500 to-orange-500 p-8 text-center">
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-10 h-10 text-red-500" />
               </div>
-              <h2 className="text-3xl font-bold mb-2">
-                Phòng họp đã được tạo!
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Cuộc họp đã kết thúc
               </h2>
-              <p className="text-green-100">Bạn là Host của phòng họp này</p>
+              <p className="text-red-100">Host đã kết thúc cuộc họp</p>
+            </div>
+
+            <div className="p-8 text-center">
+              <p className="text-gray-600 mb-6">
+                Bạn sẽ được chuyển về trang chủ trong giây lát...
+              </p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ WAITING ROOM UI
+  if (
+    meetingStatus.requireHostToStart &&
+    !meetingStatus.isStarted &&
+    !isModerator
+  ) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+            <div className="bg-[#2D8CFF] p-8 text-center">
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <Clock className="w-10 h-10 text-[#2D8CFF]" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Đang chờ host...
+              </h2>
+              <p className="text-blue-100">
+                Cuộc họp sẽ bắt đầu khi host tham gia
+              </p>
             </div>
 
             <div className="p-8 space-y-6">
-              {/* Thông tin cơ bản */}
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  {createdMeeting.title}
-                </h3>
-                {createdMeeting.description && (
-                  <p className="text-gray-600 mb-2">
-                    {createdMeeting.description}
-                  </p>
-                )}
-                <p className="text-gray-700">
-                  <span className="font-semibold">Ngày họp:</span>{" "}
-                  {new Date(createdMeeting.scheduledDate).toLocaleDateString()}{" "}
-                  {createdMeeting.scheduledTime}
+              <div className="bg-blue-50 rounded-lg p-6 text-center">
+                <p className="text-sm text-[#2D8CFF] font-medium mb-2">
+                  Thời gian chờ
                 </p>
-                <p className="text-gray-700">
-                  <span className="font-semibold">Thời lượng:</span>{" "}
-                  {createdMeeting.duration} phút
+                <p className="text-4xl font-bold text-gray-900">
+                  {formatTime(waitingTime)}
                 </p>
-                <p className="text-gray-700">
-                  <span className="font-semibold">Bảo vệ mật khẩu:</span>{" "}
-                  {createdMeeting.isPasswordProtected ? "Có" : "Không"}
-                </p>
-                {createdMeeting.isPasswordProtected && (
-                  <p className="text-gray-700">
-                    <span className="font-semibold">Mật khẩu:</span>{" "}
-                    {createdMeeting.password}
-                  </p>
-                )}
               </div>
 
-              {/* Mã phòng họp */}
-              <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-indigo-600 font-medium mb-1">
-                      Mã phòng họp
-                    </p>
-                    <code className="text-3xl font-bold text-indigo-900">
-                      {createdMeeting.roomCode}
-                    </code>
-                  </div>
-                  <button
-                    onClick={() =>
-                      navigator.clipboard.writeText(createdMeeting.roomCode)
-                    }
-                    className="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-                  >
-                    <Copy className="w-6 h-6" />
-                  </button>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Mã phòng</span>
+                  <code className="font-mono font-bold text-[#2D8CFF]">
+                    {roomName}
+                  </code>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Tên của bạn</span>
+                  <span className="font-medium text-gray-900">
+                    {userName || guestName}
+                  </span>
                 </div>
               </div>
 
-              {/* Link Meeting */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                  <Link className="w-4 h-4 mr-2 text-indigo-600" />
-                  Link Meeting
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={createdMeeting.meetingLink}
-                    readOnly
-                    className="flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm"
-                  />
-                  <button
-                    onClick={() =>
-                      navigator.clipboard.writeText(createdMeeting.meetingLink)
-                    }
-                    className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center space-x-2"
-                  >
-                    <Copy className="w-5 h-5" />
-                    <span>Copy</span>
-                  </button>
-                </div>
+              <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-800">
+                  Bạn sẽ tự động vào phòng khi host bắt đầu cuộc họp
+                </p>
               </div>
 
-              {/* Button hành động */}
-              <div className="flex space-x-4">
+              <div className="space-y-3 pt-4">
                 <button
-                  onClick={() =>
-                    (window.location.href = createdMeeting.hostJoinLink)
-                  }
-                  className="flex-1 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition font-semibold flex items-center justify-center space-x-2 shadow-lg"
+                  onClick={() => window.location.reload()}
+                  className="w-full py-3 bg-[#2D8CFF] text-white rounded-lg hover:bg-[#0B5CFF] transition font-medium"
                 >
-                  <Video className="w-5 h-5" />
-                  <span>Bắt đầu họp ngay (Host)</span>
+                  Làm mới trang
                 </button>
                 <button
-                  onClick={() => (window.location.href = "/dashboard")}
-                  className="px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-semibold"
+                  onClick={() => navigate("/")}
+                  className="w-full py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
                 >
-                  Về Dashboard
+                  Rời khỏi phòng chờ
                 </button>
               </div>
             </div>
@@ -255,239 +596,102 @@ function CreateMeeting() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Tạo phòng họp mới
-            </h1>
-            <p className="text-gray-600">
-              Điền thông tin để tạo phòng họp. Bạn sẽ là Host của phòng này.
-            </p>
+  // ✅ ERROR UI
+  if (loadError) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-900">
+        <div className="max-w-md bg-white rounded-lg shadow-xl p-8">
+          <div className="flex items-center space-x-3 mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+            <h2 className="text-xl font-bold text-gray-900">Lỗi kết nối</h2>
           </div>
+          <p className="text-gray-600 mb-6">{loadError}</p>
+          <div className="space-y-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full px-4 py-2 bg-[#2D8CFF] text-white rounded-lg hover:bg-[#0B5CFF] transition font-medium"
+            >
+              Thử lại
+            </button>
+            <button
+              onClick={() => navigate("/")}
+              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
+            >
+              Quay lại trang chủ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-          {/* Form */}
-          <div className="space-y-6">
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tiêu đề cuộc họp <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="VD: Họp team Marketing tháng 10"
-                className={`w-full px-4 py-3 border ${
-                  errors.title ? "border-red-300" : "border-gray-300"
-                } rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-              />
-              {errors.title && (
-                <p className="mt-1 text-sm text-red-600">{errors.title}</p>
-              )}
-            </div>
+  // ✅ MAIN MEETING ROOM UI
+  return (
+    <div className="w-screen h-screen flex flex-col bg-gray-900 overflow-hidden">
+      <div className="flex-1 relative">
+        <div ref={jitsiContainerRef} className="absolute inset-0" />
 
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mô tả
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows={3}
-                placeholder="Mô tả ngắn về nội dung cuộc họp..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            {/* Date & Time */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  Ngày họp
-                </label>
-                <input
-                  type="date"
-                  name="scheduledDate"
-                  value={formData.scheduledDate}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 border ${
-                    errors.scheduledDate ? "border-red-300" : "border-gray-300"
-                  } rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                />
-                {errors.scheduledDate && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.scheduledDate}
+        {!isJitsiLoaded && !loadError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-90">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#2D8CFF] mx-auto mb-4"></div>
+              <p className="text-white text-lg font-medium">
+                Đang tải phòng họp...
+              </p>
+              <p className="text-gray-400 text-sm mt-2">Room: {roomName}</p>
+              <p className="text-gray-400 text-sm">
+                User: {userName || guestName || "Guest"}
+              </p>
+              {isModerator && (
+                <div className="mt-3 flex items-center justify-center space-x-2">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                  <p className="text-green-400 text-sm font-semibold">
+                    Bạn là Host
                   </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Clock className="w-4 h-4 inline mr-1" />
-                  Giờ bắt đầu
-                </label>
-                <input
-                  type="time"
-                  name="scheduledTime"
-                  value={formData.scheduledTime}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-
-            {/* Duration & Max Participants */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Thời lượng (phút)
-                </label>
-                <select
-                  name="duration"
-                  value={formData.duration}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="30">30 phút</option>
-                  <option value="60">1 giờ</option>
-                  <option value="90">1.5 giờ</option>
-                  <option value="120">2 giờ</option>
-                  <option value="180">3 giờ</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Users className="w-4 h-4 inline mr-1" />
-                  Số người tối đa
-                </label>
-                <input
-                  type="number"
-                  name="maxParticipants"
-                  value={formData.maxParticipants}
-                  onChange={handleChange}
-                  placeholder="Không giới hạn"
-                  min="2"
-                  className={`w-full px-4 py-3 border ${
-                    errors.maxParticipants
-                      ? "border-red-300"
-                      : "border-gray-300"
-                  } rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                />
-                {errors.maxParticipants && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.maxParticipants}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Password Protection */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    name="isPasswordProtected"
-                    checked={formData.isPasswordProtected}
-                    onChange={handleChange}
-                    className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    <Lock className="w-4 h-4 inline mr-1" />
-                    Bảo vệ bằng mật khẩu
-                  </span>
-                </label>
-              </div>
-
-              {formData.isPasswordProtected && (
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Nhập mật khẩu (tối thiểu 4 ký tự)"
-                    className={`w-full px-4 py-3 pr-12 border ${
-                      errors.password ? "border-red-300" : "border-gray-300"
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                  {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.password}
-                    </p>
-                  )}
                 </div>
               )}
             </div>
-
-            {/* Submit Button */}
-            <div className="flex space-x-4 pt-6">
-              <button
-                onClick={handleSubmit}
-                disabled={isLoading}
-                className={`flex-1 py-4 rounded-lg font-semibold transition flex items-center justify-center space-x-2 ${
-                  isLoading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
-                }`}
-              >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    <span>Đang tạo...</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-5 h-5" />
-                    <span>Tạo phòng họp</span>
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => (window.location.href = "/dashboard")}
-                className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-semibold"
-              >
-                Hủy
-              </button>
-            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-export default CreateMeeting;
+export default MeetingRoom;
+
+/* ========================================
+ * NHỮNG THAY ĐỔI CHÍNH
+ * ========================================
+ *
+ * ✅ 1. Thêm state hostEndedMeeting:
+ *    - Track khi host end meeting
+ *    - Hiển thị notification cho participants
+ *
+ * ✅ 2. Polling để check host end meeting:
+ *    - Chỉ participants poll (không phải host)
+ *    - Poll mỗi 2 giây để check isStarted = false
+ *    - Khi detect host end → dispose Jitsi và redirect
+ *
+ * ✅ 3. Host end meeting API call:
+ *    - Khi host click End Meeting
+ *    - Gọi API POST /api/Meeting/{roomName}/end
+ *    - Set isStarted = false cho room
+ *
+ * ✅ 4. Host Ended Notification UI:
+ *    - Màn hình đỏ/cam thông báo meeting ended
+ *    - Auto redirect sau 2 giây
+ *
+ * ✅ 5. Cập nhật màu Zoom Blue:
+ *    - Tất cả màu cam đã đổi sang #2D8CFF
+ *    - Waiting room, buttons, loading spinner
+ *
+ * ========================================
+ *
+ * BACKEND API CẦN CÓ:
+ * POST /api/Meeting/{roomName}/end
+ * Body: { userEmail: string }
+ *
+ * Action: Set meeting.isStarted = false
+ * ========================================
+ */

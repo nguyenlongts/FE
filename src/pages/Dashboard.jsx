@@ -17,21 +17,21 @@ import {
   Play,
   ArrowRight,
   LogOut,
+  Crown,
+  Check,
 } from "lucide-react";
 
 function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [meetings, setMeetings] = useState([
-    // danh sách meeting
-  ]);
+  const [meetings, setMeetings] = useState([]);
 
   const [quickJoinCode, setQuickJoinCode] = useState("");
   const [quickJoinError, setQuickJoinError] = useState("");
 
   const [upcomingMeetings, setUpcomingMeetings] = useState([]);
   const [completedMeetings, setCompletedMeetings] = useState([]);
-  const [activeTab, setActiveTab] = useState("upcoming"); // tab state
+  const [activeTab, setActiveTab] = useState("upcoming");
 
   const [stats, setStats] = useState({
     totalMeetings: 0,
@@ -79,6 +79,7 @@ function DashboardPage() {
             status: scheduledDate > now ? "upcoming" : "completed",
             roomCode: m.roomCode,
             isPasswordProtected: m.isPasswordProtected,
+            hostName: m.hostName, // ✅ LƯU HOST NAME
           };
 
           totalParticipants += meeting.participants;
@@ -123,19 +124,54 @@ function DashboardPage() {
 
     try {
       setQuickJoinError("");
-      const response = await fetch(
+      const res = await fetch(
         `http://localhost:5110/api/Meeting/check/${quickJoinCode}`
       );
-      const data = await response.json();
+      const data = await res.json();
       if (data.data === false) {
         setQuickJoinError("Mã phòng không tồn tại");
         return;
       }
 
-      navigate(`/meeting/${quickJoinCode}?user=${user.name}`);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Vui lòng đăng nhập lại.");
+        navigate("/login");
+        return;
+      }
+
+      const statusRes = await fetch(
+        `http://localhost:5110/api/Meeting/${quickJoinCode}/status`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const statusData = await statusRes.json();
+      const isHost = statusData.data.hostName === user.email;
+
+      // Nếu host và cần start, gọi start API
+      if (
+        isHost &&
+        statusData.data.requireHostToStart &&
+        !statusData.data.isStarted
+      ) {
+        await fetch(
+          `http://localhost:5110/api/Meeting/${quickJoinCode}/start`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      } else if (!statusData.data.canJoin) {
+        alert("Phòng họp chưa bắt đầu, vui lòng chờ host.");
+        return;
+      }
+
+      navigate(`/meeting/${quickJoinCode}`);
     } catch (error) {
       console.error(error);
-      setQuickJoinError("Không thể kiểm tra mã phòng. Vui lòng thử lại.");
+      setQuickJoinError("Không thể tham gia cuộc họp. Vui lòng thử lại.");
     }
   };
 
@@ -183,6 +219,7 @@ function DashboardPage() {
             status: scheduledDate > now ? "upcoming" : "completed",
             roomCode: m.roomCode,
             isPasswordProtected: m.isPasswordProtected,
+            hostName: m.hostName,
           };
 
           if (meeting.status === "upcoming") upcoming.push(meeting);
@@ -202,90 +239,203 @@ function DashboardPage() {
     }
   };
 
-  const handleJoinMeeting = (code) => {
-    navigate(`/meeting/${code}?user=${user.name}`);
+  // ✅ HANDLE JOIN MEETING - Check if user is host
+  // const handleJoinMeeting = (meeting) => {
+  //   const isHost = meeting.hostName === user.email;
+
+  //   const params = new URLSearchParams({
+  //     user: user.name || user.email,
+  //     userEmail: user.email,
+  //   });
+
+  //   if (isHost) {
+  //     params.append("moderator", "true");
+  //   }
+
+  //   console.log("🚀 Joining meeting:", {
+  //     roomCode: meeting.roomCode,
+  //     isHost,
+  //     userEmail: user.email,
+  //     hostName: meeting.hostName,
+  //     url: `/meeting/${meeting.roomCode}?${params.toString()}`,
+  //   });
+
+  //   navigate(`/meeting/${meeting.roomCode}?${params.toString()}`);
+  // };
+  const handleJoinMeeting = async (meeting) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Vui lòng đăng nhập lại.");
+        navigate("/login");
+        return;
+      }
+
+      // Lấy trạng thái phòng
+      const res = await fetch(
+        `http://localhost:5110/api/Meeting/${meeting.roomCode}/status`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+
+      if (data.returnCode !== 200) {
+        alert("Không thể lấy trạng thái phòng họp.");
+        return;
+      }
+
+      const roomStatus = data.data;
+      const isHost = roomStatus.hostName === user.email;
+
+      // Nếu host, auto start nếu phòng chưa bắt đầu
+      if (isHost && roomStatus.requireHostToStart && !roomStatus.isStarted) {
+        const startRes = await fetch(
+          `http://localhost:5110/api/Meeting/${meeting.roomCode}/start`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!startRes.ok) throw new Error("Không thể bắt đầu phòng họp.");
+
+        console.log("✅ Host đã bắt đầu phòng họp");
+      } else if (!roomStatus.canJoin) {
+        // Guest nhưng phòng chưa được start
+        alert("Phòng họp chưa bắt đầu, vui lòng chờ host.");
+        return;
+      }
+
+      // Điều hướng trực tiếp tới /meeting/ROOMCODE
+      navigate(`/meeting/${meeting.roomCode}`);
+    } catch (error) {
+      console.error(error);
+      alert("Không thể tham gia cuộc họp.");
+    }
   };
 
-  const MeetingCard = ({ meeting, type }) => (
-    <div key={meeting.id} className="p-6 hover:bg-gray-50 transition">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center space-x-3 mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {meeting.title}
-            </h3>
-            {meeting.isPasswordProtected && (
-              <Lock className="w-4 h-4 text-yellow-600" />
-            )}
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                meeting.status === "upcoming"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-gray-100 text-gray-700"
-              }`}
-            >
-              {meeting.status === "upcoming" ? "Sắp diễn ra" : "Đã hoàn thành"}
-            </span>
-          </div>
+  const MeetingCard = ({ meeting, type }) => {
+    // ✅ Check if current user is host
+    const isHost = meeting.hostName === user.email;
 
-          <div className="flex items-center space-x-6 text-sm text-gray-600">
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4" />
-              <span>{meeting.date}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4" />
-              <span>
-                {meeting.time} ({meeting.duration})
+    return (
+      <div key={meeting.id} className="p-6 hover:bg-gray-50 transition">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <div className="flex items-center space-x-3 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {meeting.title}
+              </h3>
+              {/* ✅ Show host badge */}
+              {isHost && (
+                <div className="flex items-center space-x-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                  <Crown className="w-3 h-3" />
+                  <span>Host</span>
+                </div>
+              )}
+              {meeting.isPasswordProtected && (
+                <Lock className="w-4 h-4 text-yellow-600" />
+              )}
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  meeting.status === "upcoming"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                {meeting.status === "upcoming"
+                  ? "Sắp diễn ra"
+                  : "Đã hoàn thành"}
               </span>
             </div>
-            <div className="flex items-center space-x-2">
-              <Users className="w-4 h-4" />
-              <span>{meeting.participants} người</span>
+
+            <div className="flex items-center space-x-6 text-sm text-gray-600">
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4" />
+                <span>{meeting.date}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Clock className="w-4 h-4" />
+                <span>
+                  {meeting.time} ({meeting.duration})
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Users className="w-4 h-4" />
+                <span>{meeting.participants} người</span>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center space-x-2">
+              <code className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-mono">
+                {meeting.roomCode}
+              </code>
+              <button
+                onClick={() => handleCopyRoomCode(meeting.roomCode)}
+                className="p-1 text-gray-500 hover:text-indigo-600 transition"
+                title="Copy mã phòng"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          <div className="mt-3 flex items-center space-x-2">
-            <code className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-mono">
-              {meeting.roomCode}
-            </code>
-            <button
-              onClick={() => handleCopyRoomCode(meeting.roomCode)}
-              className="p-1 text-gray-500 hover:text-indigo-600 transition"
-              title="Copy mã phòng"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
+          <div className="flex items-center space-x-2 ml-4">
+            {meeting.status === "upcoming" && (
+              <button
+                onClick={() => handleJoinMeeting(meeting)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition font-medium ${
+                  isHost
+                    ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                    : "bg-green-600 text-white hover:bg-green-700"
+                }`}
+              >
+                {isHost ? (
+                  <>
+                    <Crown className="w-4 h-4" />
+                    <span>Bắt đầu (Host)</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    <span>Tham gia</span>
+                  </>
+                )}
+              </button>
+            )}
+            {/* ✅ Only host can delete */}
+            {isHost && (
+              <button
+                onClick={() => handleDeleteMeeting(meeting.id)}
+                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xóa</span>
+              </button>
+            )}
           </div>
         </div>
-
-        <div className="flex items-center space-x-2 ml-4">
-          {meeting.status === "upcoming" && (
-            <button
-              onClick={() => handleJoinMeeting(meeting.roomCode)}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
-            >
-              <Play className="w-4 h-4" />
-              <span>Tham gia</span>
-            </button>
-          )}
-          <button
-            onClick={() => handleDeleteMeeting(meeting.id)}
-            className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Xóa</span>
-          </button>
-        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderMeetings = () => {
     const list =
       activeTab === "upcoming" ? upcomingMeetings : completedMeetings;
     if (list.length === 0) {
-      return <div className="p-6 text-gray-500">Không có cuộc họp nào</div>;
+      return (
+        <div className="p-12 text-center">
+          <Video className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 text-lg">Không có cuộc họp nào</p>
+          <p className="text-gray-400 text-sm mt-2">
+            {activeTab === "upcoming"
+              ? "Tạo phòng họp mới để bắt đầu"
+              : "Các cuộc họp đã hoàn thành sẽ hiển thị ở đây"}
+          </p>
+        </div>
+      );
     }
     return list.map((m) => (
       <MeetingCard key={m.id} meeting={m} type={activeTab} />
@@ -299,12 +449,17 @@ function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-1">Xin chào, {user?.name}!</p>
+            <p className="text-gray-600 mt-1">
+              Xin chào, {user?.name}!
+              <span className="text-xs text-gray-400 ml-2">
+                ({user?.email})
+              </span>
+            </p>
           </div>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => navigate("/create-meeting")}
-              className="flex items-center space-x-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
+              className="flex items-center space-x-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium shadow-md"
             >
               <Plus className="w-5 h-5" />
               <span>Tạo phòng mới</span>
@@ -352,6 +507,7 @@ function DashboardPage() {
             )}
           </div>
         </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-md p-6">
@@ -408,23 +564,35 @@ function DashboardPage() {
           <div className="flex border-b border-gray-200">
             <button
               onClick={() => setActiveTab("upcoming")}
-              className={`flex-1 py-3 text-center font-medium ${
+              className={`flex-1 py-4 text-center font-medium transition ${
                 activeTab === "upcoming"
                   ? "border-b-2 border-indigo-600 text-indigo-600"
                   : "text-gray-600 hover:text-indigo-600"
               }`}
             >
-              Sắp diễn ra
+              <div className="flex items-center justify-center space-x-2">
+                <Calendar className="w-5 h-5" />
+                <span>Sắp diễn ra</span>
+                <span className="px-2 py-1 bg-indigo-100 text-indigo-600 rounded-full text-xs">
+                  {upcomingMeetings.length}
+                </span>
+              </div>
             </button>
             <button
               onClick={() => setActiveTab("completed")}
-              className={`flex-1 py-3 text-center font-medium ${
+              className={`flex-1 py-4 text-center font-medium transition ${
                 activeTab === "completed"
                   ? "border-b-2 border-indigo-600 text-indigo-600"
                   : "text-gray-600 hover:text-indigo-600"
               }`}
             >
-              Đã hoàn thành
+              <div className="flex items-center justify-center space-x-2">
+                <Check className="w-5 h-5" />
+                <span>Đã hoàn thành</span>
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                  {completedMeetings.length}
+                </span>
+              </div>
             </button>
           </div>
           <div className="divide-y divide-gray-200">{renderMeetings()}</div>

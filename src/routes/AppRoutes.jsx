@@ -1,64 +1,84 @@
-// src/routes/AppRoutes.jsx
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-// Context
 import { AuthProvider } from "../context/AuthContext";
 import PublicRoute from "../components/PublicRoute";
-// Components
 import ProtectedRoute from "../components/ProtectedRoute";
 
-// Pages
 import HomePage from "../pages/Home";
 import LoginPage from "../pages/Login";
 import RegisterPage from "../pages/Register";
 import DashboardPage from "../pages/Dashboard";
 import CreateMeetingPage from "../pages/CreateMeeting";
-import MeetingPage from "../pages/Meeting";
 import HistoryPage from "../pages/History";
 import NotFoundPage from "../pages/NotFound";
 import MeetingRoom from "../pages/Meeting";
+import AdminPanel from "../pages/AdminPanel";
+
 function AppRoutes() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Public Routes */}
+          {/* ========================================
+           * PUBLIC ROUTES
+           * ======================================== */}
           <Route element={<PublicRoute />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
           </Route>
-          {/* Protected Routes */}
+
+          {/* ========================================
+           * ADMIN ROUTES - Chỉ Admin mới truy cập được
+           * ======================================== */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AdminPanel />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ========================================
+           * USER ROUTES - Chỉ User mới truy cập được
+           * ======================================== */}
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="User">
                 <DashboardPage />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/create-meeting"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="User">
                 <CreateMeetingPage />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/history"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="User">
                 <HistoryPage />
               </ProtectedRoute>
             }
           />
 
-          {/* Meeting Routes (Public - for guests) */}
+          {/* ========================================
+           * MEETING ROUTES - Public (cho guests)
+           * ======================================== */}
           <Route path="/meeting/:roomName" element={<MeetingRoom />} />
 
-          {/* 404 Not Found */}
+          {/* ========================================
+           * FALLBACK - 404 Not Found
+           * ======================================== */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>

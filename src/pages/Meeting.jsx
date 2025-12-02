@@ -1,35 +1,257 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock } from "lucide-react";
 
 function MeetingRoom() {
   const { roomName } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Lấy query params
+  const savedUser = localStorage.getItem("user");
+  const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+
   const searchParams = new URLSearchParams(location.search);
   const guestName = searchParams.get("guest");
-  const userName = searchParams.get("user");
-  const isModerator = searchParams.get("moderator") === "true"; // Lấy từ URL nếu có
+
+  const [isModerator, setIsModerator] = useState(false);
+
+  const userName =
+    parsedUser?.name || sessionStorage.getItem("guestName") || "Guest";
+  const userEmail = parsedUser?.email || "guest@example.com";
+
+  useEffect(() => {
+    if (location.search) {
+      navigate(`/meeting/${roomName}`, { replace: true });
+    }
+  }, [location.search, navigate, roomName]);
+
   const hasNavigated = useRef(false);
   const [isJitsiLoaded, setIsJitsiLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
-  const [meetingInfo, setMeetingInfo] = useState({
-    participants: [],
-    isAudioMuted: false,
-    isVideoMuted: false,
+  const [meetingStatus, setMeetingStatus] = useState({
+    isChecking: true,
+    requireHostToStart: false,
+    isStarted: false,
+    hostName: "",
   });
+  const [waitingTime, setWaitingTime] = useState(0);
+  const [hostEndedMeeting, setHostEndedMeeting] = useState(false);
 
   const jitsiContainerRef = useRef(null);
   const apiRef = useRef(null);
+  const pollIntervalRef = useRef(null);
+  const hostEndPollRef = useRef(null);
+
   const JAAS_CONFIG = {
     appId: "vpaas-magic-cookie-e17fdac567914126bc4b82b9f3b4c787",
     domain: "8x8.vc",
     apiUrl: "http://localhost:5110/api/Jaas/generate-token",
+    meetingStatusUrl: "http://localhost:5110/api/Meeting",
   };
 
+  // CHECK MEETING STATUS & DETERMINE IF USER IS HOST
   useEffect(() => {
+    const checkAndStartMeeting = async () => {
+      try {
+        const response = await fetch(
+          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `HTTP ${response.status}: Không thể lấy thông tin phòng họp`
+          );
+        }
+
+        const result = await response.json();
+
+        if (result.returnCode !== 200) {
+          throw new Error(
+            result.message || "Không thể lấy thông tin phòng họp"
+          );
+        }
+
+        const data = result.data;
+        const isUserHost = data.hostName === userEmail;
+        setIsModerator(isUserHost);
+
+        setMeetingStatus({
+          isChecking: false,
+          requireHostToStart: data.requireHostToStart || false,
+          isStarted: data.isStarted || false,
+          hostName: data.hostName || "",
+        });
+
+        // If user is host and meeting not started, auto start
+        if (isUserHost && !data.isStarted) {
+          const token = localStorage.getItem("token");
+
+          if (!token) {
+            setLoadError("Vui lòng đăng nhập lại để bắt đầu cuộc họp");
+            return;
+          }
+
+          const startResponse = await fetch(
+            `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/start`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (!startResponse.ok) {
+            if (startResponse.status === 401) {
+              setLoadError(
+                "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+              );
+              setTimeout(() => navigate("/login"), 2000);
+              return;
+            }
+            throw new Error("Không thể bắt đầu cuộc họp");
+          }
+
+          const startResult = await startResponse.json();
+
+          if (startResult.returnCode === 200) {
+            setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
+          }
+        }
+      } catch (error) {
+        setLoadError(error.message);
+        setMeetingStatus((prev) => ({ ...prev, isChecking: false }));
+      }
+    };
+
+    if (roomName) {
+      checkAndStartMeeting();
+    }
+  }, [roomName, userEmail]);
+
+  // POLL FOR HOST JOIN (if waiting)
+  useEffect(() => {
+    if (
+      meetingStatus.isChecking ||
+      meetingStatus.isStarted ||
+      isModerator ||
+      !meetingStatus.requireHostToStart
+    ) {
+      return;
+    }
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`
+        );
+
+        if (!response.ok) return;
+
+        const result = await response.json();
+
+        if (result.returnCode === 200 && result.data.isStarted) {
+          setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
+
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+        }
+      } catch (error) {
+        // Silent fail
+      }
+    }, 3000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [meetingStatus, roomName, isModerator]);
+
+  // POLL TO CHECK IF HOST ENDED MEETING (for participants only)
+  useEffect(() => {
+    if (isModerator || !meetingStatus.isStarted) {
+      return;
+    }
+
+    hostEndPollRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`
+        );
+
+        if (!response.ok) return;
+
+        const result = await response.json();
+
+        if (result.returnCode === 200 && !result.data.isStarted) {
+          setHostEndedMeeting(true);
+
+          if (hostEndPollRef.current) {
+            clearInterval(hostEndPollRef.current);
+            hostEndPollRef.current = null;
+          }
+
+          if (apiRef.current) {
+            try {
+              apiRef.current.executeCommand("hangup");
+              apiRef.current.dispose();
+              apiRef.current = null;
+            } catch (error) {
+              // Silent fail
+            }
+          }
+
+          setTimeout(() => {
+            handleMeetingEnd();
+          }, 2000);
+        }
+      } catch (error) {
+        // Silent fail
+      }
+    }, 2000);
+
+    return () => {
+      if (hostEndPollRef.current) {
+        clearInterval(hostEndPollRef.current);
+        hostEndPollRef.current = null;
+      }
+    };
+  }, [meetingStatus, roomName, isModerator]);
+
+  // WAITING TIME COUNTER
+  useEffect(() => {
+    if (
+      !meetingStatus.isStarted &&
+      meetingStatus.requireHostToStart &&
+      !isModerator
+    ) {
+      const timer = setInterval(() => {
+        setWaitingTime((prev) => prev + 1);
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [meetingStatus, isModerator]);
+
+  // INITIALIZE JITSI when meeting is ready
+  useEffect(() => {
+    if (meetingStatus.isChecking) {
+      return;
+    }
+
+    if (
+      meetingStatus.requireHostToStart &&
+      !meetingStatus.isStarted &&
+      !isModerator
+    ) {
+      return;
+    }
+
     const loadJitsiScript = () => {
       if (window.JitsiMeetExternalAPI) {
         initJitsi();
@@ -37,7 +259,6 @@ function MeetingRoom() {
       }
 
       const script = document.createElement("script");
-
       script.src = `https://8x8.vc/${JAAS_CONFIG.appId}/external_api.js`;
       script.async = true;
       script.onload = () => {
@@ -102,12 +323,10 @@ function MeetingRoom() {
             startWithAudioMuted: false,
             startWithVideoMuted: false,
             enableWelcomePage: false,
-            prejoinPageEnabled: false, // Tắt prejoin page
+            prejoinPageEnabled: false,
             disableDeepLinking: true,
-            // Thêm các config hữu ích
             enableNoisyMicDetection: true,
             enableClosePage: false,
-            // Disable analytics
             disableThirdPartyRequests: true,
           },
           interfaceConfigOverwrite: {
@@ -149,51 +368,36 @@ function MeetingRoom() {
           options
         );
 
-        apiRef.current.addEventListener("videoConferenceJoined", (event) => {
+        apiRef.current.addEventListener("videoConferenceJoined", () => {
           setIsJitsiLoaded(true);
         });
 
-        apiRef.current.addEventListener("videoConferenceLeft", () => {
+        apiRef.current.addEventListener("videoConferenceLeft", async () => {
+          if (isModerator) {
+            const token = localStorage.getItem("token");
+
+            if (token) {
+              try {
+                await fetch(`${JAAS_CONFIG.meetingStatusUrl}/${roomName}/end`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                });
+              } catch (error) {
+                // Silent fail - still proceed to end meeting
+              }
+            }
+          }
+
           handleMeetingEnd();
         });
 
         apiRef.current.addEventListener("readyToClose", () => {
           handleMeetingEnd();
         });
-
-        apiRef.current.addEventListener("participantJoined", (event) => {
-          setMeetingInfo((prev) => ({
-            ...prev,
-            participants: [...prev.participants, event],
-          }));
-        });
-
-        apiRef.current.addEventListener("participantLeft", (event) => {
-          setMeetingInfo((prev) => ({
-            ...prev,
-            participants: prev.participants.filter((p) => p.id !== event.id),
-          }));
-        });
-
-        apiRef.current.addEventListener("audioMuteStatusChanged", (event) => {
-          setMeetingInfo((prev) => ({
-            ...prev,
-            isAudioMuted: event.muted,
-          }));
-        });
-
-        apiRef.current.addEventListener("videoMuteStatusChanged", (event) => {
-          setMeetingInfo((prev) => ({
-            ...prev,
-            isVideoMuted: event.muted,
-          }));
-        });
-
-        apiRef.current.addEventListener("errorOccurred", (error) => {
-          console.error("Jitsi error:", error);
-        });
       } catch (error) {
-        console.error("Lỗi khởi tạo Jitsi:", error);
         setLoadError(
           error.message || "Không thể khởi tạo phòng họp. Vui lòng thử lại."
         );
@@ -208,15 +412,16 @@ function MeetingRoom() {
           apiRef.current.dispose();
           apiRef.current = null;
         } catch (error) {
-          console.error("Lỗi khi cleanup:", error);
+          // Silent fail
         }
       }
     };
-  }, [roomName, userName, guestName, isModerator]);
+  }, [roomName, userName, guestName, isModerator, meetingStatus]);
 
   const handleMeetingEnd = () => {
-    if (hasNavigated.current) return; // tránh gọi lại
+    if (hasNavigated.current) return;
     hasNavigated.current = true;
+
     setTimeout(() => {
       const savedUser = localStorage.getItem("user");
       if (savedUser != null) {
@@ -227,45 +432,116 @@ function MeetingRoom() {
     }, 1000);
   };
 
-  const handleCopyMeetingLink = () => {
-    const link = `${window.location.origin}/meeting/${roomName}`;
-    navigator.clipboard.writeText(link).then(() => {
-      alert("Đã copy link phòng họp!");
-    });
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleLeaveMeeting = () => {
-    if (window.confirm("Bạn có chắc muốn rời khỏi cuộc họp?")) {
-      if (apiRef.current) {
-        apiRef.current.executeCommand("hangup");
-      }
-    }
-  };
+  // HOST ENDED MEETING NOTIFICATION
+  if (hostEndedMeeting) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-[#2D8CFF] to-[#0B5CFF] p-8 text-center">
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-10 h-10 text-[#2D8CFF]" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Cuộc họp đã kết thúc
+              </h2>
+              <p className="text-blue-100">Host đã kết thúc cuộc họp</p>
+            </div>
 
-  const handleToggleAudio = () => {
-    if (apiRef.current) {
-      apiRef.current.executeCommand("toggleAudio");
-    }
-  };
+            <div className="p-8 text-center">
+              <p className="text-gray-600 mb-6">
+                Bạn sẽ được chuyển về trang chủ trong giây lát...
+              </p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D8CFF] mx-auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const handleToggleVideo = () => {
-    if (apiRef.current) {
-      apiRef.current.executeCommand("toggleVideo");
-    }
-  };
+  // WAITING ROOM UI
+  if (
+    meetingStatus.requireHostToStart &&
+    !meetingStatus.isStarted &&
+    !isModerator
+  ) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+            <div className="bg-[#2D8CFF] p-8 text-center">
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <Clock className="w-10 h-10 text-[#2D8CFF]" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Đang chờ host...
+              </h2>
+              <p className="text-blue-100">
+                Cuộc họp sẽ bắt đầu khi host tham gia
+              </p>
+            </div>
 
-  const handleToggleScreenShare = () => {
-    if (apiRef.current) {
-      apiRef.current.executeCommand("toggleShareScreen");
-    }
-  };
+            <div className="p-8 space-y-6">
+              <div className="bg-blue-50 rounded-lg p-6 text-center">
+                <p className="text-sm text-[#2D8CFF] font-medium mb-2">
+                  Thời gian chờ
+                </p>
+                <p className="text-4xl font-bold text-gray-900">
+                  {formatTime(waitingTime)}
+                </p>
+              </div>
 
-  const handleToggleChat = () => {
-    if (apiRef.current) {
-      apiRef.current.executeCommand("toggleChat");
-    }
-  };
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Mã phòng</span>
+                  <code className="font-mono font-bold text-[#2D8CFF]">
+                    {roomName}
+                  </code>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Tên của bạn</span>
+                  <span className="font-medium text-gray-900">
+                    {userName || guestName}
+                  </span>
+                </div>
+              </div>
 
+              <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-800">
+                  Bạn sẽ tự động vào phòng khi host bắt đầu cuộc họp
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-4">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full py-3 bg-[#2D8CFF] text-white rounded-lg hover:bg-[#0B5CFF] transition font-medium"
+                >
+                  Làm mới trang
+                </button>
+                <button
+                  onClick={() => navigate("/")}
+                  className="w-full py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+                >
+                  Rời khỏi phòng chờ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ERROR UI
   if (loadError) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-900">
@@ -278,39 +554,35 @@ function MeetingRoom() {
           <div className="space-y-3">
             <button
               onClick={() => window.location.reload()}
-              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
+              className="w-full px-4 py-2 bg-[#2D8CFF] text-white rounded-lg hover:bg-[#0B5CFF] transition font-medium"
             >
               Thử lại
             </button>
             <button
-              onClick={() => navigate("/user/dashboard")}
+              onClick={() => {
+                const savedUser = localStorage.getItem("user");
+                navigate(savedUser ? "/dashboard" : "/");
+              }}
               className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
             >
-              Quay lại Dashboard
+              Quay lại trang chủ
             </button>
-          </div>
-          <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-500">
-            <p className="font-semibold mb-1">Debug Info:</p>
-            <p>Room: {roomName}</p>
-            <p>User: {userName || guestName || "N/A"}</p>
-            <p>API: {JAAS_CONFIG.apiUrl}</p>
           </div>
         </div>
       </div>
     );
   }
 
+  // MAIN MEETING ROOM UI
   return (
     <div className="w-screen h-screen flex flex-col bg-gray-900 overflow-hidden">
-      {/* Main Content - Jitsi Container */}
       <div className="flex-1 relative">
         <div ref={jitsiContainerRef} className="absolute inset-0" />
 
-        {/* Loading State */}
         {!isJitsiLoaded && !loadError && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-90">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#2D8CFF] mx-auto mb-4"></div>
               <p className="text-white text-lg font-medium">
                 Đang tải phòng họp...
               </p>
@@ -318,6 +590,14 @@ function MeetingRoom() {
               <p className="text-gray-400 text-sm">
                 User: {userName || guestName || "Guest"}
               </p>
+              {isModerator && (
+                <div className="mt-3 flex items-center justify-center space-x-2">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                  <p className="text-green-400 text-sm font-semibold">
+                    Bạn là Host
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

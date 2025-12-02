@@ -1,29 +1,70 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from "react";
 
 const AuthContext = createContext(null);
+
+// Decode token chuẩn JWT
+function decodeJWT(token) {
+  try {
+    if (typeof token !== "string") return null;
+
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64));
+  } catch (e) {
+    console.error("Invalid token:", e);
+    return null;
+  }
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Load user từ localStorage khi F5
   useEffect(() => {
-    // Check if user is logged in (from localStorage)
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        localStorage.removeItem("user");
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      const decoded = decodeJWT(token);
+
+      // Token hết hạn
+      if (!decoded || decoded.exp * 1000 < Date.now()) {
+        logout();
+      } else {
+        setUser({
+          userId: decoded.userId,
+          name: decoded.Name,
+          email: decoded.Email,
+          role: decoded.Role,
+        });
       }
     }
     setIsLoading(false);
   }, []);
 
-  const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
+  // Login → nhận token string
+  const login = (token) => {
+    if (!token || typeof token !== "string") {
+      console.error("Token invalid:", token);
+      return;
+    }
+
+    localStorage.setItem("token", token);
+
+    const decoded = decodeJWT(token);
+
+    if (decoded) {
+      const userData = {
+        userId: decoded.userId,
+        name: decoded.Name,
+        email: decoded.Email,
+        role: decoded.Role,
+      };
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+    }
   };
 
   const logout = () => {
@@ -33,29 +74,20 @@ export const AuthProvider = ({ children }) => {
     window.location.href = "/";
   };
 
-  const register = (userData) => {
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-  };
-
-  const value = {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    login,
-    logout,
-    register,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
-};
-
+export const useAuth = () => useContext(AuthContext);
 export default AuthContext;

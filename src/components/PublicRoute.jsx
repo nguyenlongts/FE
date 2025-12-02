@@ -1,4 +1,3 @@
-// src/components/PublicRoute.jsx
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -17,7 +16,15 @@ const PublicRoute = () => {
     );
   }
 
-  return user ? <Navigate to="/dashboard" replace /> : <Outlet />;
+  return user ? (
+    user.role?.toLowerCase() === "admin" ? (
+      <Navigate to="/admin" replace />
+    ) : (
+      <Navigate to="/dashboard" replace />
+    )
+  ) : (
+    <Outlet />
+  );
 };
 
 export default PublicRoute;
