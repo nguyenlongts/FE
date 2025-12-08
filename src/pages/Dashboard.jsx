@@ -50,7 +50,7 @@ function DashboardPage() {
     const fetchMeetings = async () => {
       try {
         const response = await fetch(
-          `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/by-email?email=${user.email}`
+          `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/by-email?email=${user.email}`
         );
         const data = await response.json();
         if (!data.data) return;
@@ -124,7 +124,7 @@ function DashboardPage() {
     try {
       setQuickJoinError("");
       const res = await fetch(
-        `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/check/${quickJoinCode}`
+        `httpss://kiritsu2210-001-site1.rtempurl.com/api/Meeting/check/${quickJoinCode}`
       );
       const data = await res.json();
       if (data.data === false) {
@@ -140,7 +140,7 @@ function DashboardPage() {
       }
 
       const statusRes = await fetch(
-        `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${quickJoinCode}/status`,
+        `httpss://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${quickJoinCode}/status`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const statusData = await statusRes.json();
@@ -151,7 +151,7 @@ function DashboardPage() {
         !statusData.data.isStarted
       ) {
         await fetch(
-          `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${quickJoinCode}/start`,
+          `httpss://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${quickJoinCode}/start`,
           {
             method: "POST",
             headers: {
@@ -182,7 +182,7 @@ function DashboardPage() {
 
     try {
       const response = await fetch(
-        `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${id}`,
+        `httpss://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${id}`,
         {
           method: "DELETE",
         }
@@ -192,7 +192,7 @@ function DashboardPage() {
       if (result.data) {
         // Fetch lại danh sách meetings từ server
         const resMeetings = await fetch(
-          `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/by-email?email=${user.email}`
+          `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/by-email?email=${user.email}`
         );
         const dataMeetings = await resMeetings.json();
 
@@ -273,7 +273,7 @@ function DashboardPage() {
 
       // Lấy trạng thái phòng
       const res = await fetch(
-        `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${meeting.roomCode}/status`,
+        `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${meeting.roomCode}/status`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
@@ -289,7 +289,7 @@ function DashboardPage() {
       // Nếu host, auto start nếu phòng chưa bắt đầu
       if (isHost && roomStatus.requireHostToStart && !roomStatus.isStarted) {
         const startRes = await fetch(
-          `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${meeting.roomCode}/start`,
+          `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${meeting.roomCode}/start`,
           {
             method: "POST",
             headers: {

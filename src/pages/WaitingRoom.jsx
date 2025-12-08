@@ -9,7 +9,7 @@ function WaitingRoom({ roomCode, userName, onHostJoined }) {
     const checkHostStatus = async () => {
       try {
         const response = await fetch(
-          `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${roomCode}/status`
+          `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${roomCode}/status`
         );
         const data = await response.json();
 

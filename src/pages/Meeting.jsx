@@ -45,8 +45,9 @@ function MeetingRoom() {
   const JAAS_CONFIG = {
     appId: "vpaas-magic-cookie-e17fdac567914126bc4b82b9f3b4c787",
     domain: "8x8.vc",
-    apiUrl: "http://kiritsu2210-001-site1.rtempurl.com/api/Jaas/generate-token",
-    meetingStatusUrl: "http://kiritsu2210-001-site1.rtempurl.com/api/Meeting",
+    apiUrl:
+      "https://kiritsu2210-001-site1.rtempurl.com/api/Jaas/generate-token",
+    meetingStatusUrl: "https://kiritsu2210-001-site1.rtempurl.com/api/Meeting",
   };
 
   useEffect(() => {
