@@ -2,10 +2,10 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
-// Decode token chuẩn JWT
+// Giải mã JWT payload
 function decodeJWT(token) {
   try {
-    if (typeof token !== "string") return null;
+    if (!token) return null;
 
     const base64Url = token.split(".")[1];
     if (!base64Url) return null;
@@ -22,55 +22,47 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user từ localStorage khi F5
+  // Load user từ localStorage khi refresh
   useEffect(() => {
+    const savedUser = localStorage.getItem("user");
     const token = localStorage.getItem("token");
 
-    if (token) {
+    if (savedUser && token) {
+      const parsed = JSON.parse(savedUser);
+
+      // Kiểm tra token còn hạn không
       const decoded = decodeJWT(token);
 
-      // Token hết hạn
       if (!decoded || decoded.exp * 1000 < Date.now()) {
         logout();
       } else {
-        setUser({
-          userId: decoded.userId,
-          name: decoded.Name,
-          email: decoded.Email,
-          role: decoded.Role,
-        });
+        setUser(parsed);
       }
     }
+
     setIsLoading(false);
   }, []);
 
-  // Login → nhận token string
-  const login = (token) => {
-    if (!token || typeof token !== "string") {
-      console.error("Token invalid:", token);
+  // Login theo đúng LoginPage (nhận object)
+  // login({ userId, name, email, role, token })
+  const login = (userInfo) => {
+    if (!userInfo?.token) {
+      console.error("❌ login() requires token in userInfo");
       return;
     }
 
-    localStorage.setItem("token", token);
+    // Lưu localStorage
+    localStorage.setItem("token", userInfo.token);
+    localStorage.setItem("user", JSON.stringify(userInfo));
 
-    const decoded = decodeJWT(token);
-
-    if (decoded) {
-      const userData = {
-        userId: decoded.userId,
-        name: decoded.Name,
-        email: decoded.Email,
-        role: decoded.Role,
-      };
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
-    }
+    // Lưu vào state
+    setUser(userInfo);
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
     window.location.href = "/";
   };
 

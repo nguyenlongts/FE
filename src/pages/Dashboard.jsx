@@ -1,4 +1,3 @@
-// src/pages/Dashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -51,7 +50,7 @@ function DashboardPage() {
     const fetchMeetings = async () => {
       try {
         const response = await fetch(
-          `http://localhost:5110/api/Meeting/by-email?email=${user.email}`
+          `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/by-email?email=${user.email}`
         );
         const data = await response.json();
         if (!data.data) return;
@@ -79,7 +78,7 @@ function DashboardPage() {
             status: scheduledDate > now ? "upcoming" : "completed",
             roomCode: m.roomCode,
             isPasswordProtected: m.isPasswordProtected,
-            hostName: m.hostName, // ✅ LƯU HOST NAME
+            hostName: m.hostName,
           };
 
           totalParticipants += meeting.participants;
@@ -125,7 +124,7 @@ function DashboardPage() {
     try {
       setQuickJoinError("");
       const res = await fetch(
-        `http://localhost:5110/api/Meeting/check/${quickJoinCode}`
+        `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/check/${quickJoinCode}`
       );
       const data = await res.json();
       if (data.data === false) {
@@ -141,20 +140,18 @@ function DashboardPage() {
       }
 
       const statusRes = await fetch(
-        `http://localhost:5110/api/Meeting/${quickJoinCode}/status`,
+        `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${quickJoinCode}/status`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const statusData = await statusRes.json();
       const isHost = statusData.data.hostName === user.email;
-
-      // Nếu host và cần start, gọi start API
       if (
         isHost &&
         statusData.data.requireHostToStart &&
         !statusData.data.isStarted
       ) {
         await fetch(
-          `http://localhost:5110/api/Meeting/${quickJoinCode}/start`,
+          `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${quickJoinCode}/start`,
           {
             method: "POST",
             headers: {
@@ -184,15 +181,18 @@ function DashboardPage() {
     if (!window.confirm("Bạn có chắc muốn xóa cuộc họp này?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5110/api/Meeting/${id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
       const result = await response.json();
 
       if (result.data) {
         // Fetch lại danh sách meetings từ server
         const resMeetings = await fetch(
-          `http://localhost:5110/api/Meeting/by-email?email=${user.email}`
+          `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/by-email?email=${user.email}`
         );
         const dataMeetings = await resMeetings.json();
 
@@ -273,7 +273,7 @@ function DashboardPage() {
 
       // Lấy trạng thái phòng
       const res = await fetch(
-        `http://localhost:5110/api/Meeting/${meeting.roomCode}/status`,
+        `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${meeting.roomCode}/status`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
@@ -289,7 +289,7 @@ function DashboardPage() {
       // Nếu host, auto start nếu phòng chưa bắt đầu
       if (isHost && roomStatus.requireHostToStart && !roomStatus.isStarted) {
         const startRes = await fetch(
-          `http://localhost:5110/api/Meeting/${meeting.roomCode}/start`,
+          `http://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${meeting.roomCode}/start`,
           {
             method: "POST",
             headers: {

@@ -11,23 +11,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
-// 🔥 Decode JWT chuẩn
-const decodeJwt = (token) => {
-  try {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    return JSON.parse(jsonPayload);
-  } catch {
-    return null;
-  }
-};
-
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -39,26 +22,41 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
 
-  // fallback route sau login
   const from =
     location.state?.from ||
     sessionStorage.getItem("redirectAfterLogin") ||
     null;
 
-  // 🔥 Điều hướng theo role
-  const navigateByRole = (role) => {
-    const r = role?.toString().trim().toLowerCase();
-    if (r === "admin") navigate("/admin", { replace: true });
-    else navigate("/dashboard", { replace: true });
+  const decodeJwt = (token) => {
+    try {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(jsonPayload);
+    } catch (err) {
+      console.error("JWT decode error:", err);
+      return null;
+    }
   };
 
-  // -------------------------
-  // Form handlers
-  // -------------------------
+  const navigateByRole = (role) => {
+    const normalizedRole = role?.toString().trim().toLowerCase();
+    if (normalizedRole === "admin") {
+      navigate("/admin", { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
-    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
     setLoginError("");
   };
 
@@ -71,9 +69,6 @@ const LoginPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // -------------------------
-  // Submit Login
-  // -------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -82,52 +77,68 @@ const LoginPage = () => {
     setLoginError("");
 
     try {
-      const res = await fetch("http://localhost:5110/api/Auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        "http://kiritsu2210-001-site1.rtempurl.com/api/Auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        }
+      );
 
-      const result = await res.json();
+      const result = await response.json();
 
-      if (res.ok && result.returnCode === 200) {
+      if (response.ok && result.returnCode === 200) {
         const token = result.data.token;
         const payload = decodeJwt(token);
-
         if (!payload) {
           setLoginError("Token không hợp lệ");
           return;
         }
+        const role = payload.Role || payload.role || "User";
+        console.log("👤 Extracted role:", role);
+        const userInfo = {
+          userId: payload.userId,
+          name: payload.Name || payload.name || result.data.name,
+          email: payload.Email || payload.email || result.data.email,
+          role: role,
+        };
 
-        // Lưu token và user vào context + localStorage
-        login(token);
+        console.log("💾 Saving to localStorage:", userInfo);
 
-        // Nếu có redirect trước đó, ưu tiên
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(userInfo));
+
+        login({
+          ...userInfo,
+          token: token,
+        });
+
         if (from) {
           sessionStorage.removeItem("redirectAfterLogin");
           navigate(from, { replace: true });
         } else {
-          navigateByRole(payload.Role);
+          navigateByRole(role);
         }
       } else {
-        setLoginError(result.message || "Email hoặc mật khẩu sai");
+        setLoginError(result.message || "Email hoặc mật khẩu không chính xác");
       }
-    } catch (e) {
-      console.error(e);
-      setLoginError("Không thể kết nối server");
+    } catch (error) {
+      console.error("Login error:", error);
+      setLoginError("Không thể kết nối tới server");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleBackToHome = () => navigate("/", { replace: true });
+  const handleBackToHome = () => {
+    navigate("/", { replace: true });
+  };
 
-  // -------------------------
-  // UI
-  // -------------------------
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
+        {/* Back to Home Button */}
         <button
           onClick={handleBackToHome}
           className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition group"
@@ -136,6 +147,7 @@ const LoginPage = () => {
           <span>Quay lại trang chủ</span>
         </button>
 
+        {/* Logo & Title */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="bg-[#2D8CFF] p-3 rounded-2xl shadow-lg">
@@ -148,6 +160,7 @@ const LoginPage = () => {
           <p className="text-gray-600">Đăng nhập để tiếp tục vào TLU Meeting</p>
         </div>
 
+        {/* Login Form */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-xl p-8">
           {loginError && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3">
@@ -157,6 +170,7 @@ const LoginPage = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email
@@ -168,14 +182,18 @@ const LoginPage = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`w-full pl-10 pr-4 py-3 border-2 ${
-                    errors.email ? "border-red-500" : "border-gray-300"
-                  } rounded-lg`}
                   placeholder="example@email.com"
+                  className={`w-full pl-10 pr-4 py-3 bg-white border-2 ${
+                    errors.email ? "border-red-500" : "border-gray-300"
+                  } text-gray-900 placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D8CFF] focus:border-transparent transition`}
                 />
               </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
             </div>
 
+            {/* Password Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Mật khẩu
@@ -187,30 +205,54 @@ const LoginPage = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full pl-10 pr-12 py-3 border-2 ${
-                    errors.password ? "border-red-500" : "border-gray-300"
-                  } rounded-lg`}
                   placeholder="••••••••"
+                  className={`w-full pl-10 pr-12 py-3 bg-white border-2 ${
+                    errors.password ? "border-red-500" : "border-gray-300"
+                  } text-gray-900 placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D8CFF] focus:border-transparent transition`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
                 >
-                  {showPassword ? <EyeOff /> : <Eye />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
 
+            {/* Login Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full py-3 bg-[#2D8CFF] text-white rounded-lg font-semibold ${
-                isLoading && "opacity-60 cursor-not-allowed"
-              }`}
+              className={`w-full py-3 rounded-lg font-semibold transition shadow-lg ${
+                isLoading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-[#2D8CFF] hover:bg-[#0B5CFF] hover:shadow-xl"
+              } text-white`}
             >
               {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
+
+            {/* Register Link */}
+            <div className="text-center pt-4 border-t border-gray-200">
+              <p className="text-gray-600 text-sm">
+                Chưa có tài khoản?{" "}
+                <button
+                  type="button"
+                  onClick={() => navigate("/register")}
+                  className="text-[#2D8CFF] hover:text-[#0B5CFF] font-medium transition"
+                >
+                  Đăng ký ngay
+                </button>
+              </p>
+            </div>
           </form>
         </div>
       </div>

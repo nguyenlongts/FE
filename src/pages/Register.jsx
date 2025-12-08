@@ -98,17 +98,40 @@ function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      alert("Đăng ký thành công! Chuyển đến trang đăng nhập...");
-      window.location.href = "/login";
+    try {
+      const response = await fetch(
+        "http://kiritsu2210-001-site1.rtempurl.com/api/Auth/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            name: formData.fullName,
+            email: formData.email,
+            password: formData.password,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert("Đăng ký thất bại: " + errorData.message || response.statusText);
+      } else {
+        alert("Đăng ký thành công! Chuyển đến trang đăng nhập...");
+        window.location.href = "/login";
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Có lỗi xảy ra. Vui lòng thử lại sau.");
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (

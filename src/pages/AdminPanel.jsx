@@ -20,8 +20,6 @@ import {
   StopCircle,
 } from "lucide-react";
 
-const API_BASE = "http://localhost:5110/api";
-
 function AdminPanel() {
   const [activeTab, setActiveTab] = useState("statistics");
   const [statistics, setStatistics] = useState(null);
@@ -29,7 +27,7 @@ function AdminPanel() {
   const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-
+  const API_BASE = "http://kiritsu2210-001-site1.rtempurl.com/api";
   useEffect(() => {
     if (activeTab === "statistics") {
       fetchStatistics();

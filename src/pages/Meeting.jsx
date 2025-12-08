@@ -45,11 +45,10 @@ function MeetingRoom() {
   const JAAS_CONFIG = {
     appId: "vpaas-magic-cookie-e17fdac567914126bc4b82b9f3b4c787",
     domain: "8x8.vc",
-    apiUrl: "http://localhost:5110/api/Jaas/generate-token",
-    meetingStatusUrl: "http://localhost:5110/api/Meeting",
+    apiUrl: "http://kiritsu2210-001-site1.rtempurl.com/api/Jaas/generate-token",
+    meetingStatusUrl: "http://kiritsu2210-001-site1.rtempurl.com/api/Meeting",
   };
 
-  // CHECK MEETING STATUS & DETERMINE IF USER IS HOST
   useEffect(() => {
     const checkAndStartMeeting = async () => {
       try {
@@ -82,7 +81,6 @@ function MeetingRoom() {
           hostName: data.hostName || "",
         });
 
-        // If user is host and meeting not started, auto start
         if (isUserHost && !data.isStarted) {
           const token = localStorage.getItem("token");
 
@@ -130,7 +128,6 @@ function MeetingRoom() {
     }
   }, [roomName, userEmail]);
 
-  // POLL FOR HOST JOIN (if waiting)
   useEffect(() => {
     if (
       meetingStatus.isChecking ||
@@ -159,9 +156,7 @@ function MeetingRoom() {
             pollIntervalRef.current = null;
           }
         }
-      } catch (error) {
-        // Silent fail
-      }
+      } catch (error) {}
     }, 3000);
 
     return () => {
@@ -172,7 +167,6 @@ function MeetingRoom() {
     };
   }, [meetingStatus, roomName, isModerator]);
 
-  // POLL TO CHECK IF HOST ENDED MEETING (for participants only)
   useEffect(() => {
     if (isModerator || !meetingStatus.isStarted) {
       return;
@@ -201,18 +195,14 @@ function MeetingRoom() {
               apiRef.current.executeCommand("hangup");
               apiRef.current.dispose();
               apiRef.current = null;
-            } catch (error) {
-              // Silent fail
-            }
+            } catch (error) {}
           }
 
           setTimeout(() => {
             handleMeetingEnd();
           }, 2000);
         }
-      } catch (error) {
-        // Silent fail
-      }
+      } catch (error) {}
     }, 2000);
 
     return () => {
@@ -223,7 +213,6 @@ function MeetingRoom() {
     };
   }, [meetingStatus, roomName, isModerator]);
 
-  // WAITING TIME COUNTER
   useEffect(() => {
     if (
       !meetingStatus.isStarted &&
@@ -238,7 +227,6 @@ function MeetingRoom() {
     }
   }, [meetingStatus, isModerator]);
 
-  // INITIALIZE JITSI when meeting is ready
   useEffect(() => {
     if (meetingStatus.isChecking) {
       return;
@@ -411,9 +399,7 @@ function MeetingRoom() {
         try {
           apiRef.current.dispose();
           apiRef.current = null;
-        } catch (error) {
-          // Silent fail
-        }
+        } catch (error) {}
       }
     };
   }, [roomName, userName, guestName, isModerator, meetingStatus]);
@@ -438,7 +424,6 @@ function MeetingRoom() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // HOST ENDED MEETING NOTIFICATION
   if (hostEndedMeeting) {
     return (
       <div className="h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -466,7 +451,6 @@ function MeetingRoom() {
     );
   }
 
-  // WAITING ROOM UI
   if (
     meetingStatus.requireHostToStart &&
     !meetingStatus.isStarted &&
@@ -541,7 +525,6 @@ function MeetingRoom() {
     );
   }
 
-  // ERROR UI
   if (loadError) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-900">
