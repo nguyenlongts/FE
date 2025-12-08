@@ -146,7 +146,7 @@ function RegisterPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Tạo tài khoản
           </h1>
-          <p className="text-gray-600">Tham gia MeetHub ngay hôm nay</p>
+          <p className="text-gray-600">Tham gia TLUHub ngay hôm nay</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8">

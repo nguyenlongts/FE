@@ -190,7 +190,6 @@ function DashboardPage() {
       const result = await response.json();
 
       if (result.data) {
-        // Fetch lại danh sách meetings từ server
         const resMeetings = await fetch(
           `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/by-email?email=${user.email}`
         );

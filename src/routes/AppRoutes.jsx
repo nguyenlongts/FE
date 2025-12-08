@@ -20,18 +20,12 @@ function AppRoutes() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* ========================================
-           * PUBLIC ROUTES
-           * ======================================== */}
           <Route element={<PublicRoute />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
           </Route>
 
-          {/* ========================================
-           * ADMIN ROUTES - Chỉ Admin mới truy cập được
-           * ======================================== */}
           <Route
             path="/admin"
             element={
@@ -41,9 +35,6 @@ function AppRoutes() {
             }
           />
 
-          {/* ========================================
-           * USER ROUTES - Chỉ User mới truy cập được
-           * ======================================== */}
           <Route
             path="/dashboard"
             element={

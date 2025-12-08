@@ -34,7 +34,7 @@ function HomePage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:5110/api/Meeting/check/${encodeURIComponent(
+        `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/check/${encodeURIComponent(
           roomCode
         )}`
       );
@@ -42,7 +42,6 @@ function HomePage() {
 
       if (result.data) {
         sessionStorage.setItem("guestName", guestName.trim() || "Guest");
-        // ✅ Navigate thay vì window.location.href
         navigate(
           `/meeting/${roomCode}?guest=${encodeURIComponent(guestName.trim())}`
         );
@@ -58,18 +57,15 @@ function HomePage() {
   };
 
   const handleLogin = () => {
-    // ✅ Navigate với replace: true để tránh loop history
     navigate("/login", { replace: true });
   };
 
   const handleRegister = () => {
-    // ✅ Navigate với replace: true để tránh loop history
     navigate("/register", { replace: true });
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
@@ -101,7 +97,6 @@ function HomePage() {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="min-h-screen flex items-center justify-center px-4 py-20">
         <div className="max-w-4xl w-full">
           <div className="text-center mb-12">
@@ -125,7 +120,6 @@ function HomePage() {
               </h2>
 
               <div className="space-y-5">
-                {/* Room Code Input */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Mã phòng họp
@@ -150,7 +144,6 @@ function HomePage() {
                   )}
                 </div>
 
-                {/* Guest Name Input */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Tên của bạn
@@ -175,7 +168,6 @@ function HomePage() {
                   )}
                 </div>
 
-                {/* Join Button */}
                 <button
                   onClick={handleJoinMeeting}
                   disabled={isLoading}
@@ -196,7 +188,6 @@ function HomePage() {
         </div>
       </div>
 
-      {/* Footer */}
       <footer className="absolute bottom-0 left-0 right-0 py-6 text-center text-gray-500 text-sm border-t border-gray-200 bg-white/80 backdrop-blur-sm">
         <p>
           &copy; 2025 TLU Meeting. Nền tảng họp trực tuyến đơn giản và hiệu quả.
