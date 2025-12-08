@@ -103,7 +103,7 @@ function CreateMeeting() {
       };
 
       const response = await fetch(
-        "http://kiritsu2210-001-site1.rtempurl.com/api/Meeting",
+        "https://kiritsu2210-001-site1.rtempurl.com/api/Meeting",
         {
           method: "POST",
           headers: {
