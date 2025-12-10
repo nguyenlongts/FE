@@ -5,8 +5,6 @@ import { useAuth } from "../context/AuthContext";
 
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { user, isLoading } = useAuth();
-
-  // Loading state
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -18,19 +16,16 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     );
   }
 
-  // Not authenticated - redirect to login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // ✅ Role-based access control
   if (requiredRole) {
     const userRole =
       user.role ||
       (localStorage.getItem("user") &&
         JSON.parse(localStorage.getItem("user")).role);
 
-    // User doesn't have required role
     if (userRole !== requiredRole) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -74,45 +69,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     }
   }
 
-  // Authenticated and authorized
   return children;
 };
 
 export default ProtectedRoute;
-
-/* ========================================
- * CÁCH SỬ DỤNG
- * ========================================
- *
- * 1. Không yêu cầu role cụ thể (chỉ cần login):
- * <Route
- *   path="/profile"
- *   element={
- *     <ProtectedRoute>
- *       <ProfilePage />
- *     </ProtectedRoute>
- *   }
- * />
- *
- * 2. Yêu cầu Admin role:
- * <Route
- *   path="/admin"
- *   element={
- *     <ProtectedRoute requiredRole="Admin">
- *       <AdminPanel />
- *     </ProtectedRoute>
- *   }
- * />
- *
- * 3. Yêu cầu User role:
- * <Route
- *   path="/dashboard"
- *   element={
- *     <ProtectedRoute requiredRole="User">
- *       <DashboardPage />
- *     </ProtectedRoute>
- *   }
- * />
- *
- * ========================================
- */

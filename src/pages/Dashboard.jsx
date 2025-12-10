@@ -124,7 +124,7 @@ function DashboardPage() {
     try {
       setQuickJoinError("");
       const res = await fetch(
-        `httpss://kiritsu2210-001-site1.rtempurl.com/api/Meeting/check/${quickJoinCode}`
+        `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/check/${quickJoinCode}`
       );
       const data = await res.json();
       if (data.data === false) {
@@ -238,29 +238,6 @@ function DashboardPage() {
     }
   };
 
-  // ✅ HANDLE JOIN MEETING - Check if user is host
-  // const handleJoinMeeting = (meeting) => {
-  //   const isHost = meeting.hostName === user.email;
-
-  //   const params = new URLSearchParams({
-  //     user: user.name || user.email,
-  //     userEmail: user.email,
-  //   });
-
-  //   if (isHost) {
-  //     params.append("moderator", "true");
-  //   }
-
-  //   console.log("🚀 Joining meeting:", {
-  //     roomCode: meeting.roomCode,
-  //     isHost,
-  //     userEmail: user.email,
-  //     hostName: meeting.hostName,
-  //     url: `/meeting/${meeting.roomCode}?${params.toString()}`,
-  //   });
-
-  //   navigate(`/meeting/${meeting.roomCode}?${params.toString()}`);
-  // };
   const handleJoinMeeting = async (meeting) => {
     try {
       const token = localStorage.getItem("token");
@@ -270,7 +247,6 @@ function DashboardPage() {
         return;
       }
 
-      // Lấy trạng thái phòng
       const res = await fetch(
         `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${meeting.roomCode}/status`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -285,7 +261,6 @@ function DashboardPage() {
       const roomStatus = data.data;
       const isHost = roomStatus.hostName === user.email;
 
-      // Nếu host, auto start nếu phòng chưa bắt đầu
       if (isHost && roomStatus.requireHostToStart && !roomStatus.isStarted) {
         const startRes = await fetch(
           `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${meeting.roomCode}/start`,
@@ -302,12 +277,10 @@ function DashboardPage() {
 
         console.log("✅ Host đã bắt đầu phòng họp");
       } else if (!roomStatus.canJoin) {
-        // Guest nhưng phòng chưa được start
         alert("Phòng họp chưa bắt đầu, vui lòng chờ host.");
         return;
       }
 
-      // Điều hướng trực tiếp tới /meeting/ROOMCODE
       navigate(`/meeting/${meeting.roomCode}`);
     } catch (error) {
       console.error(error);
@@ -316,7 +289,6 @@ function DashboardPage() {
   };
 
   const MeetingCard = ({ meeting, type }) => {
-    // ✅ Check if current user is host
     const isHost = meeting.hostName === user.email;
 
     return (
@@ -404,7 +376,6 @@ function DashboardPage() {
                 )}
               </button>
             )}
-            {/* ✅ Only host can delete */}
             {isHost && (
               <button
                 onClick={() => handleDeleteMeeting(meeting.id)}

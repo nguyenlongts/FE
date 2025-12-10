@@ -168,7 +168,10 @@ function CreateMeeting() {
                 )}
                 <p className="text-gray-700">
                   <span className="font-semibold">Ngày họp:</span>{" "}
-                  {new Date(createdMeeting.scheduledDate).toLocaleDateString()}{" "}
+                  {new Date(createdMeeting.scheduledDate).toLocaleDateString(
+                    "vi-VN",
+                    { day: "2-digit", month: "2-digit", year: "numeric" }
+                  )}{" "}
                   {createdMeeting.scheduledTime}
                 </p>
                 <p className="text-gray-700">
