@@ -71,6 +71,8 @@ function RegisterPage() {
       newErrors.fullName = "Họ tên không được để trống";
     } else if (formData.fullName.trim().length < 2) {
       newErrors.fullName = "Họ tên phải có ít nhất 2 ký tự";
+    } else if (!/^[\p{L}\s]+$/u.test(formData.fullName.trim())) {
+      newErrors.fullName = "Họ tên không được chứa số hoặc ký tự đặc biệt";
     }
 
     if (!formData.email) {

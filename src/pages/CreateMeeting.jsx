@@ -58,12 +58,31 @@ function CreateMeeting() {
     }
 
     if (formData.scheduledDate) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const selectedDate = new Date(formData.scheduledDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
 
       if (selectedDate < today) {
         newErrors.scheduledDate = "Ngày họp không được là ngày trong quá khứ";
+      }
+
+      if (formData.scheduledTime) {
+        const selectedDateOnly = new Date(
+          selectedDate.getFullYear(),
+          selectedDate.getMonth(),
+          selectedDate.getDate()
+        );
+
+        if (selectedDateOnly.getTime() === today.getTime()) {
+          const [hours, minutes] = formData.scheduledTime.split(":");
+          const scheduledDateTime = new Date();
+          scheduledDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+          if (scheduledDateTime <= now) {
+            newErrors.scheduledTime =
+              "Giờ họp không được trước thời gian hiện tại";
+          }
+        }
       }
     }
 
@@ -74,7 +93,6 @@ function CreateMeeting() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -337,6 +355,11 @@ function CreateMeeting() {
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+                {errors.scheduledTime && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.scheduledTime}
+                  </p>
+                )}
               </div>
             </div>
 

@@ -14,6 +14,7 @@ import HistoryPage from "../pages/History";
 import NotFoundPage from "../pages/NotFound";
 import MeetingRoom from "../pages/Meeting";
 import AdminPanel from "../pages/AdminPanel";
+import ChangePasswordPage from "../pages/ChangePasswordPage";
 
 function AppRoutes() {
   return (
@@ -52,7 +53,14 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
-
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute requiredRole="User">
+                <ChangePasswordPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/history"
             element={

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import EditMeetingModal from "./EditMeetingModal";
 
 import WaitingRoom from "./WaitingRoom";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +24,9 @@ import {
 } from "lucide-react";
 
 function DashboardPage() {
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [meetings, setMeetings] = useState([]);
@@ -69,6 +73,17 @@ function DashboardPage() {
           const meeting = {
             id: m.id,
             title: m.title,
+            description: m.description,
+            roomCode: m.roomCode,
+            hostName: m.hostName,
+            isPasswordProtected: m.isPasswordProtected,
+
+            // RAW DATA 👇
+            scheduledDateRaw: m.scheduledDate, // ISO string
+            scheduledTimeRaw: m.scheduledTime,
+            durationRaw: m.duration,
+
+            // DATA HIỂN THỊ 👇
             date: scheduledDate.toLocaleDateString(),
             time:
               m.scheduledTime ||
@@ -79,9 +94,6 @@ function DashboardPage() {
             duration: formatDuration(m.duration),
             participants: m.participants || 0,
             status: scheduledDate > now ? "upcoming" : "completed",
-            roomCode: m.roomCode,
-            isPasswordProtected: m.isPasswordProtected,
-            hostName: m.hostName,
           };
 
           totalParticipants += meeting.participants;
@@ -386,6 +398,17 @@ function DashboardPage() {
                 )}
               </button>
             )}
+            {isHost && meeting.status === "upcoming" && (
+              <button
+                onClick={() => {
+                  setEditingMeeting(meeting);
+                  setShowEditModal(true);
+                }}
+                className="flex items-center space-x-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition font-medium"
+              >
+                <span>Sửa</span>
+              </button>
+            )}
             {isHost && (
               <button
                 onClick={() => handleDeleteMeeting(meeting.id)}
@@ -421,7 +444,7 @@ function DashboardPage() {
       <MeetingCard key={m.id} meeting={m} type={activeTab} />
     ));
   };
-  // ✅ Add this component inside DashboardPage, before the return statement
+
   const WaitingRoomOverlay = () => {
     const [waitingTime, setWaitingTime] = useState(0);
 
@@ -563,7 +586,8 @@ function DashboardPage() {
               </span>
             </p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 relative">
+            {/* Create Meeting */}
             <button
               onClick={() => navigate("/create-meeting")}
               className="flex items-center space-x-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium shadow-md"
@@ -571,13 +595,43 @@ function DashboardPage() {
               <Plus className="w-5 h-5" />
               <span>Tạo phòng mới</span>
             </button>
-            <button
-              onClick={logout}
-              className="flex items-center space-x-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="hidden sm:inline">Đăng xuất</span>
-            </button>
+
+            {/* User Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center space-x-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
+              >
+                <Eye className="w-5 h-5" />
+                <span className="hidden sm:inline">Tài khoản</span>
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border z-50">
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate("/change-password");
+                    }}
+                    className="w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Đổi mật khẩu</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      logout();
+                    }}
+                    className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50 flex items-center space-x-2 rounded-b-xl"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Đăng xuất</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -704,6 +758,13 @@ function DashboardPage() {
           </div>
           <div className="divide-y divide-gray-200">{renderMeetings()}</div>
         </div>
+        {showEditModal && editingMeeting && (
+          <EditMeetingModal
+            meeting={editingMeeting}
+            onClose={() => setShowEditModal(false)}
+            onUpdated={() => window.location.reload()}
+          />
+        )}
       </div>
     </div>
   );
