@@ -78,12 +78,10 @@ function DashboardPage() {
             hostName: m.hostName,
             isPasswordProtected: m.isPasswordProtected,
 
-            // RAW DATA 👇
-            scheduledDateRaw: m.scheduledDate, // ISO string
+            scheduledDateRaw: m.scheduledDate,
             scheduledTimeRaw: m.scheduledTime,
             durationRaw: m.duration,
 
-            // DATA HIỂN THỊ 👇
             date: scheduledDate.toLocaleDateString(),
             time:
               m.scheduledTime ||
