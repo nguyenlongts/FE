@@ -14,7 +14,7 @@ import HistoryPage from "../pages/History";
 import NotFoundPage from "../pages/NotFound";
 import MeetingRoom from "../pages/Meeting";
 import AdminPanel from "../pages/AdminPanel";
-import ChangePasswordPage from "../pages/ChangePasswordPage";
+import ChangePasswordPage from "../pages/ChangePasswordPage.jsx";
 
 function AppRoutes() {
   return (
