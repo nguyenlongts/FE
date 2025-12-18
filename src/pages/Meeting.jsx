@@ -557,7 +557,6 @@ function MeetingRoom() {
     );
   }
 
-  // MAIN MEETING ROOM UI
   return (
     <div className="w-screen h-screen flex flex-col bg-gray-900 overflow-hidden">
       <div className="flex-1 relative">

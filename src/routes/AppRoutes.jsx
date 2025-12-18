@@ -13,7 +13,7 @@ import CreateMeetingPage from "../pages/CreateMeeting";
 import ResetPasswordPage from "../pages/ResetPasswordPage.jsx";
 import NotFoundPage from "../pages/NotFound";
 import MeetingRoom from "../pages/Meeting";
-import AdminPanel from "../pages/AdminPanel";
+import AdminPanel from "../pages/admin/AdminPanel";
 import ChangePasswordPage from "../pages/ChangePasswordPage.jsx";
 
 function AppRoutes() {
