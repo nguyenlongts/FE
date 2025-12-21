@@ -26,8 +26,6 @@ function UpdateProfile() {
           navigate("/login");
           return;
         }
-
-        // ⬅️ Copy y hệt Dashboard - CHỈ có Authorization header
         const response = await fetch(
           "https://kiritsu2210-001-site1.rtempurl.com/api/user/profile",
           { headers: { Authorization: `Bearer ${token}` } }
@@ -87,7 +85,6 @@ function UpdateProfile() {
         return;
       }
 
-      // PUT request CẦN Content-Type
       const response = await fetch(
         "https://kiritsu2210-001-site1.rtempurl.com/api/user/profile",
         {
@@ -163,9 +160,6 @@ function UpdateProfile() {
                 <div>
                   <h2 className="text-xl font-bold">{userInfo.name}</h2>
                   <p className="text-indigo-100">{userInfo.email}</p>
-                  <span className="inline-block px-3 py-1 bg-white bg-opacity-20 rounded-full text-xs font-medium mt-2">
-                    {userInfo.role || "User"}
-                  </span>
                 </div>
               </div>
             </div>
