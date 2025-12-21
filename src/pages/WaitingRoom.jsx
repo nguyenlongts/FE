@@ -45,7 +45,7 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center z-50">
       <div className="max-w-md w-full mx-4">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Header - Removed gradient */}

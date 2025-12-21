@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { AlertCircle, CheckCircle } from "lucide-react";
+import WaitingRoom from "./WaitingRoom";
 
 function MeetingRoom() {
   const { roomName } = useParams();
@@ -34,7 +35,6 @@ function MeetingRoom() {
     isStarted: false,
     hostName: "",
   });
-  const [waitingTime, setWaitingTime] = useState(0);
   const [hostEndedMeeting, setHostEndedMeeting] = useState(false);
 
   const jitsiContainerRef = useRef(null);
@@ -213,20 +213,6 @@ function MeetingRoom() {
       }
     };
   }, [meetingStatus, roomName, isModerator]);
-
-  useEffect(() => {
-    if (
-      !meetingStatus.isStarted &&
-      meetingStatus.requireHostToStart &&
-      !isModerator
-    ) {
-      const timer = setInterval(() => {
-        setWaitingTime((prev) => prev + 1);
-      }, 1000);
-
-      return () => clearInterval(timer);
-    }
-  }, [meetingStatus, isModerator]);
 
   useEffect(() => {
     if (meetingStatus.isChecking) {
@@ -419,32 +405,27 @@ function MeetingRoom() {
     }, 1000);
   };
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
+  // Host ended meeting screen
   if (hostEndedMeeting) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full mx-4">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-[#2D8CFF] to-[#0B5CFF] p-8 text-center">
+            <div className="bg-indigo-600 p-8 text-center">
               <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="w-10 h-10 text-[#2D8CFF]" />
+                <AlertCircle className="w-10 h-10 text-indigo-600" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 Cuộc họp đã kết thúc
               </h2>
-              <p className="text-blue-100">Host đã kết thúc cuộc họp</p>
+              <p className="text-indigo-100">Host đã kết thúc cuộc họp</p>
             </div>
 
             <div className="p-8 text-center">
               <p className="text-gray-600 mb-6">
                 Bạn sẽ được chuyển về trang chủ trong giây lát...
               </p>
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D8CFF] mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
             </div>
           </div>
         </div>
@@ -452,80 +433,29 @@ function MeetingRoom() {
     );
   }
 
+  // Use WaitingRoom component
   if (
     meetingStatus.requireHostToStart &&
     !meetingStatus.isStarted &&
     !isModerator
   ) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="max-w-md w-full mx-4">
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
-            <div className="bg-[#2D8CFF] p-8 text-center">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                <Clock className="w-10 h-10 text-[#2D8CFF]" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">
-                Đang chờ host...
-              </h2>
-              <p className="text-blue-100">
-                Cuộc họp sẽ bắt đầu khi host tham gia
-              </p>
-            </div>
-
-            <div className="p-8 space-y-6">
-              <div className="bg-blue-50 rounded-lg p-6 text-center">
-                <p className="text-sm text-[#2D8CFF] font-medium mb-2">
-                  Thời gian chờ
-                </p>
-                <p className="text-4xl font-bold text-gray-900">
-                  {formatTime(waitingTime)}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600">Mã phòng</span>
-                  <code className="font-mono font-bold text-[#2D8CFF]">
-                    {roomName}
-                  </code>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600">Tên của bạn</span>
-                  <span className="font-medium text-gray-900">
-                    {userName || guestName}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-blue-800">
-                  Bạn sẽ tự động vào phòng khi host bắt đầu cuộc họp
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-4">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="w-full py-3 bg-[#2D8CFF] text-white rounded-lg hover:bg-[#0B5CFF] transition font-medium"
-                >
-                  Làm mới trang
-                </button>
-                <button
-                  onClick={() => navigate("/")}
-                  className="w-full py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
-                >
-                  Rời khỏi phòng chờ
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <WaitingRoom
+        roomCode={roomName}
+        userName={userName || guestName}
+        onHostJoined={() => {
+          // Meeting will auto-start via polling, just update state
+          setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
+        }}
+        onCancel={() => {
+          const savedUser = localStorage.getItem("user");
+          navigate(savedUser ? "/dashboard" : "/");
+        }}
+      />
     );
   }
 
+  // Error screen
   if (loadError) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-900">
@@ -538,7 +468,7 @@ function MeetingRoom() {
           <div className="space-y-3">
             <button
               onClick={() => window.location.reload()}
-              className="w-full px-4 py-2 bg-[#2D8CFF] text-white rounded-lg hover:bg-[#0B5CFF] transition font-medium"
+              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
             >
               Thử lại
             </button>
@@ -557,6 +487,7 @@ function MeetingRoom() {
     );
   }
 
+  // Main meeting room
   return (
     <div className="w-screen h-screen flex flex-col bg-gray-900 overflow-hidden">
       <div className="flex-1 relative">
@@ -565,7 +496,7 @@ function MeetingRoom() {
         {!isJitsiLoaded && !loadError && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-90">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#2D8CFF] mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
               <p className="text-white text-lg font-medium">
                 Đang tải phòng họp...
               </p>
