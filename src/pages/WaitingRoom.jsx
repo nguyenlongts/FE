@@ -45,11 +45,11 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="max-w-md w-full mx-4">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-center">
+          {/* Header - Removed gradient */}
+          <div className="bg-indigo-600 p-8 text-center">
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
               <Clock className="w-10 h-10 text-indigo-600" />
             </div>
@@ -98,14 +98,8 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-3 pt-4">
-              {/* <button
-                onClick={() => window.location.reload()}
-                className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
-              >
-                Làm mới trang
-              </button> */}
+            {/* Action Buttons - Only one button */}
+            <div className="pt-4">
               <button
                 onClick={onCancel}
                 className="w-full py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"

@@ -65,8 +65,9 @@ function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      <header className="absolute top-0 left-0 right-0 z-10">
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header */}
+      <header className="w-full z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -97,7 +98,8 @@ function HomePage() {
         </div>
       </header>
 
-      <div className="min-h-screen flex items-center justify-center px-4 py-20">
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="max-w-4xl w-full">
           <div className="text-center mb-12">
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-4 leading-tight">
@@ -178,17 +180,14 @@ function HomePage() {
                   </span>
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
-
-                <p className="text-center text-sm text-gray-500 mt-4">
-                  Bạn sẽ được đưa vào phòng chờ và cần chờ host chấp thuận
-                </p>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
-      <footer className="absolute bottom-0 left-0 right-0 py-6 text-center text-gray-500 text-sm border-t border-gray-200 bg-white/80 backdrop-blur-sm">
+      {/* Footer with spacing */}
+      <footer className="w-full mt-12 py-6 text-center text-gray-500 text-sm border-t border-gray-200 bg-white/80 backdrop-blur-sm">
         <p>
           &copy; 2025 TLU Meeting. Nền tảng họp trực tuyến đơn giản và hiệu quả.
         </p>

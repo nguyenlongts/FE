@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import EditMeetingModal from "./EditMeetingModal";
-
 import WaitingRoom from "./WaitingRoom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -10,11 +9,9 @@ import {
   Calendar,
   Clock,
   Users,
-  TrendingUp,
   Eye,
   Trash2,
   Copy,
-  Share2,
   Lock,
   Play,
   ArrowRight,
@@ -319,7 +316,6 @@ function DashboardPage() {
               <h3 className="text-lg font-semibold text-gray-900">
                 {meeting.title}
               </h3>
-              {/* ✅ Show host badge */}
               {isHost && (
                 <div className="flex items-center space-x-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
                   <Crown className="w-3 h-3" />
@@ -443,124 +439,9 @@ function DashboardPage() {
     ));
   };
 
-  const WaitingRoomOverlay = () => {
-    const [waitingTime, setWaitingTime] = useState(0);
-
-    useEffect(() => {
-      if (!waitingRoomData?.roomCode) return;
-
-      const checkHostStatus = async () => {
-        try {
-          const response = await fetch(
-            `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${waitingRoomData.roomCode}/status`
-          );
-
-          if (!response.ok) return;
-
-          const result = await response.json();
-
-          if (result.returnCode === 200 && result.data.isStarted) {
-            setShowWaitingRoom(false);
-            navigate(`/meeting/${waitingRoomData.roomCode}`);
-          }
-        } catch (error) {
-          console.error("Error checking host status:", error);
-        }
-      };
-
-      checkHostStatus();
-      const interval = setInterval(checkHostStatus, 3000);
-
-      return () => clearInterval(interval);
-    }, [waitingRoomData]);
-
-    useEffect(() => {
-      const timer = setInterval(() => {
-        setWaitingTime((prev) => prev + 1);
-      }, 1000);
-
-      return () => clearInterval(timer);
-    }, []);
-
-    const formatTime = (seconds) => {
-      const mins = Math.floor(seconds / 60);
-      const secs = seconds % 60;
-      return `${mins}:${secs.toString().padStart(2, "0")}`;
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="max-w-md w-full mx-4">
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-center">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                <Clock className="w-10 h-10 text-indigo-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">
-                Đang chờ host...
-              </h2>
-              <p className="text-indigo-100">
-                Cuộc họp sẽ bắt đầu khi host tham gia
-              </p>
-            </div>
-
-            <div className="p-8 space-y-6">
-              <div className="bg-indigo-50 rounded-lg p-6 text-center">
-                <p className="text-sm text-indigo-600 font-medium mb-2">
-                  Thời gian chờ
-                </p>
-                <p className="text-4xl font-bold text-indigo-900">
-                  {formatTime(waitingTime)}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600">Mã phòng</span>
-                  <code className="font-mono font-bold text-indigo-600">
-                    {waitingRoomData?.roomCode}
-                  </code>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600">Tên của bạn</span>
-                  <span className="font-medium text-gray-900">
-                    {waitingRoomData?.userName}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm text-blue-800">
-                    Bạn sẽ tự động vào phòng khi host bắt đầu cuộc họp. Vui lòng
-                    không tắt trang này.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-4">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
-                >
-                  Làm mới trang
-                </button>
-                <button
-                  onClick={() => setShowWaitingRoom(false)}
-                  className="w-full py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
-                >
-                  Rời khỏi phòng chờ
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Waiting Room Component */}
       {showWaitingRoom && waitingRoomData && (
         <WaitingRoom
           roomCode={waitingRoomData.roomCode}
@@ -569,9 +450,13 @@ function DashboardPage() {
             setShowWaitingRoom(false);
             navigate(`/meeting/${waitingRoomData.roomCode}`);
           }}
-          onCancel={() => setShowWaitingRoom(false)}
+          onCancel={() => {
+            setShowWaitingRoom(false);
+            setWaitingRoomData(null);
+          }}
         />
       )}
+
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
@@ -585,7 +470,6 @@ function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center space-x-3 relative">
-            {/* Create Meeting */}
             <button
               onClick={() => navigate("/create-meeting")}
               className="flex items-center space-x-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium shadow-md"
@@ -594,7 +478,6 @@ function DashboardPage() {
               <span>Tạo phòng mới</span>
             </button>
 
-            {/* User Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -635,8 +518,8 @@ function DashboardPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Quick Join */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-xl p-8 mb-8">
+        {/* Quick Join - No Gradient */}
+        <div className="bg-indigo-600 rounded-2xl shadow-xl p-8 mb-8">
           <div className="max-w-2xl">
             <h2 className="text-2xl font-bold text-white mb-2">
               Tham gia nhanh
@@ -651,7 +534,7 @@ function DashboardPage() {
                 onChange={(e) => setQuickJoinCode(e.target.value.toUpperCase())}
                 onKeyPress={(e) => e.key === "Enter" && handleQuickJoin()}
                 placeholder="Nhập mã phòng (VD: MTG-ABC123)"
-                className="flex-1 px-4 py-3 rounded-lg border-2 border-white/30 bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white font-mono text-lg"
+                className="flex-1 px-4 py-3 rounded-lg border-2 border-indigo-400 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white font-mono text-lg"
               />
               <button
                 onClick={handleQuickJoin}
@@ -681,10 +564,6 @@ function DashboardPage() {
                 <Video className="w-8 h-8 text-indigo-600" />
               </div>
             </div>
-            {/* <div className="mt-4 flex items-center text-sm text-green-600">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              <span>+12% so với tháng trước</span>
-            </div> */}
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-6">
@@ -756,10 +635,15 @@ function DashboardPage() {
           </div>
           <div className="divide-y divide-gray-200">{renderMeetings()}</div>
         </div>
+
+        {/* Edit Meeting Modal */}
         {showEditModal && editingMeeting && (
           <EditMeetingModal
             meeting={editingMeeting}
-            onClose={() => setShowEditModal(false)}
+            onClose={() => {
+              setShowEditModal(false);
+              setEditingMeeting(null);
+            }}
             onUpdated={() => window.location.reload()}
           />
         )}
