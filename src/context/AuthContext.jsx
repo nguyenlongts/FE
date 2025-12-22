@@ -39,7 +39,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (userInfo, token) => {
-    // ⬅️ Thêm tham số token
     if (!token) {
       console.error("login() requires token");
       return;
