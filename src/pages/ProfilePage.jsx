@@ -1,5 +1,5 @@
 import React from "react";
-import UpdateProfile from "./UpdateProfile"; // component đã viết trước đó
+import UpdateProfile from "./UpdateProfile";
 import { useAuth } from "../context/AuthContext";
 import DashboardHeader from "./DashboardHeader";
 

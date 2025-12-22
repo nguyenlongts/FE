@@ -3,7 +3,7 @@ import EditMeetingModal from "./EditMeetingModal";
 import WaitingRoom from "./WaitingRoom";
 import UpdateProfile from "./UpdateProfile";
 import { useNavigate } from "react-router-dom";
-import DashboardHeader from "./DashboardHeader";
+import DashboardHeader from "../components/DashboardHeader";
 import { useAuth } from "../context/AuthContext";
 import {
   Video,
