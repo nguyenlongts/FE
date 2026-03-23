@@ -1,51 +1,57 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Clock, AlertCircle } from "lucide-react";
+
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api/Meeting`;
 
 function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
   const [waitingTime, setWaitingTime] = useState(0);
-  const [hostStatus, setHostStatus] = useState("waiting");
+  const hasJoined = useRef(false);
 
+  // Poll for host starting the meeting
   useEffect(() => {
+    let cancelled = false;
+
     const checkHostStatus = async () => {
       try {
-        const response = await fetch(
-          `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${roomCode}/status`
-        );
-
-        if (!response.ok) return;
+        const response = await fetch(`${API_BASE}/${roomCode}/status`);
+        if (!response.ok || cancelled) return;
 
         const result = await response.json();
 
-        if (result.returnCode === 200 && result.data.isStarted) {
-          onHostJoined();
+        if (result.statusCode === 200 && result.data?.status === "Live") {
+          if (!hasJoined.current) {
+            hasJoined.current = true;
+            onHostJoined();
+          }
         }
       } catch (error) {
         console.error("Error checking host status:", error);
       }
     };
 
-    const interval = setInterval(checkHostStatus, 3000);
     checkHostStatus();
+    const interval = setInterval(checkHostStatus, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [roomCode, onHostJoined]);
 
+  // Waiting time counter
   useEffect(() => {
-    const timer = setInterval(() => {
-      setWaitingTime((prev) => prev + 1);
-    }, 1000);
-
+    const timer = setInterval(() => setWaitingTime((prev) => prev + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const formatTime = (seconds) => {
+  const formatTime = useCallback((seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
+  }, []);
 
   return (
-    <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50">
       <div className="max-w-md w-full mx-4">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           <div className="bg-indigo-600 p-8 text-center">
@@ -85,12 +91,10 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
 
             <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm text-blue-800">
-                  Bạn sẽ tự động vào phòng khi host bắt đầu cuộc họp. Vui lòng
-                  không tắt trang này.
-                </p>
-              </div>
+              <p className="text-sm text-blue-800">
+                Bạn sẽ tự động vào phòng khi host bắt đầu cuộc họp. Vui lòng
+                không tắt trang này.
+              </p>
             </div>
 
             <div className="pt-4">

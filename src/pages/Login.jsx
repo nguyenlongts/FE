@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 const LoginPage = () => {
+  const API_BASE = `${import.meta.env.VITE_API_BASE_URL}`;
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,7 +44,7 @@ const LoginPage = () => {
         atob(base64)
           .split("")
           .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-          .join("")
+          .join(""),
       );
       return JSON.parse(jsonPayload);
     } catch (err) {
@@ -85,18 +86,15 @@ const LoginPage = () => {
     setLoginError("");
 
     try {
-      const response = await fetch(
-        "https://kiritsu2210-001-site1.rtempurl.com/api/Auth/login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        }
-      );
+      const response = await fetch(`${API_BASE}/api/Auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
       const result = await response.json();
 
-      if (response.ok && result.returnCode === 200) {
+      if (response.ok && result.statusCode === 200) {
         const token = result.data.token;
         const payload = decodeJwt(token);
         if (!payload) {
@@ -112,12 +110,10 @@ const LoginPage = () => {
           role: role,
         };
 
-        // Lưu token và user riêng biệt
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(userInfo));
 
-        // Pass token riêng để AuthContext xử lý
-        login(userInfo, token); // ⬅️ Thay đổi ở đây
+        login(userInfo, token);
 
         if (from) {
           sessionStorage.removeItem("redirectAfterLogin");
@@ -173,14 +169,11 @@ const LoginPage = () => {
     setForgotError("");
 
     try {
-      const response = await fetch(
-        "https://kiritsu2210-001-site1.rtempurl.com/api/Auth/forgot-password",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: forgotEmail }),
-        }
-      );
+      const response = await fetch(`${API_BASE}/api/Auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
 
       const result = await response.json();
 

@@ -15,9 +15,13 @@ import {
   EyeOff,
   Plus,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-
+import { createMeeting } from "../api/meetingApi";
+import { useNavigate } from "react-router-dom";
 function CreateMeeting() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -71,7 +75,7 @@ function CreateMeeting() {
         const selectedDateOnly = new Date(
           selectedDate.getFullYear(),
           selectedDate.getMonth(),
-          selectedDate.getDate()
+          selectedDate.getDate(),
         );
 
         if (selectedDateOnly.getTime() === today.getTime()) {
@@ -98,7 +102,7 @@ function CreateMeeting() {
     e.preventDefault();
 
     if (!isAuthenticated) {
-      alert("Bạn cần đăng nhập để tạo phòng họp");
+      toast.error("Bạn cần đăng nhập để tạo phòng họp");
       return;
     }
 
@@ -107,40 +111,33 @@ function CreateMeeting() {
     setIsLoading(true);
 
     try {
-      const hostEmail = user?.email || user?.userName || "host@example.com";
+      const hostEmail = user?.email || user?.userName;
+
+      const localDate = new Date(
+        `${formData.scheduledDate}T${formData.scheduledTime}:00`,
+      );
 
       const payload = {
+        hostName: hostEmail,
         title: formData.title,
         description: formData.description,
-        hostName: hostEmail,
-        scheduledDate: formData.scheduledDate,
-        scheduledTime: formData.scheduledTime,
+        scheduledDateTime: localDate.toISOString(),
         duration: Number(formData.duration),
       };
 
-      const response = await fetch(
-        "https://kiritsu2210-001-site1.rtempurl.com/api/Meeting",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-
+      const response = await createMeeting(payload, token);
       const result = await response.json();
 
-      if (result.returnCode === 200) {
+      if (result.success) {
         setCreatedMeeting(result.data);
         setShowSuccess(true);
+        toast.success("Tạo phòng họp thành công!");
       } else {
-        alert(result.message || "Tạo phòng họp thất bại");
+        toast.error(result.message || "Tạo phòng họp thất bại");
       }
     } catch (err) {
       console.error(err);
-      alert("Đã có lỗi xảy ra khi tạo phòng họp");
+      toast.error("Đã có lỗi xảy ra khi tạo phòng họp");
     } finally {
       setIsLoading(false);
     }
@@ -185,11 +182,15 @@ function CreateMeeting() {
                 )}
                 <p className="text-gray-700">
                   <span className="font-semibold">Ngày họp:</span>{" "}
-                  {new Date(createdMeeting.scheduledDate).toLocaleDateString(
-                    "vi-VN",
-                    { day: "2-digit", month: "2-digit", year: "numeric" }
-                  )}{" "}
-                  {createdMeeting.scheduledTime}
+                  {new Date(
+                    createdMeeting.scheduledDateTime,
+                  ).toLocaleDateString("vi-VN")}{" "}
+                  {new Date(
+                    createdMeeting.scheduledDateTime,
+                  ).toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
                 <p className="text-gray-700">
                   <span className="font-semibold">Thời lượng:</span>{" "}
@@ -225,25 +226,31 @@ function CreateMeeting() {
                   <Link className="w-4 h-4 mr-2 text-indigo-600" />
                   Link Meeting
                 </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={createdMeeting.meetingLink}
-                    readOnly
-                    className="flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm"
-                  />
-                  <button
-                    onClick={() =>
-                      navigator.clipboard.writeText(createdMeeting.meetingLink)
-                    }
-                    className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center space-x-2"
-                  >
-                    <Copy className="w-5 h-5" />
-                    <span>Copy</span>
-                  </button>
-                </div>
-              </div>
 
+                {(() => {
+                  const meetingUrl = `${window.location.origin}/meeting/${createdMeeting.roomCode}`;
+
+                  return (
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={meetingUrl}
+                        readOnly
+                        className="flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm"
+                      />
+                      <button
+                        onClick={() =>
+                          navigator.clipboard.writeText(meetingUrl)
+                        }
+                        className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center space-x-2"
+                      >
+                        <Copy className="w-5 h-5" />
+                        <span>Copy</span>
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
               {/* Button hành động */}
               <div className="flex space-x-4">
                 <button
@@ -256,7 +263,7 @@ function CreateMeeting() {
                   <span>Bắt đầu họp ngay (Host)</span>
                 </button>
                 <button
-                  onClick={() => (window.location.href = "/dashboard")}
+                  onClick={() => navigate("/dashboard")}
                   className="px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-semibold"
                 >
                   Về Dashboard
@@ -444,7 +451,7 @@ function CreateMeeting() {
                 )}
               </button>
               <button
-                onClick={() => (window.location.href = "/dashboard")}
+                onClick={() => navigate("/dashboard")}
                 className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-semibold"
               >
                 Hủy
