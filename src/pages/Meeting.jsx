@@ -41,33 +41,44 @@ function MeetingRoom() {
   const apiRef = useRef(null);
   const pollIntervalRef = useRef(null);
   const hostEndPollRef = useRef(null);
+  const hasInitialized = useRef(false);
 
   const JAAS_CONFIG = {
     appId: "vpaas-magic-cookie-e17fdac567914126bc4b82b9f3b4c787",
     domain: "8x8.vc",
-    apiUrl:
-      "https://kiritsu2210-001-site1.rtempurl.com/api/Jaas/generate-token",
-    meetingStatusUrl: "https://kiritsu2210-001-site1.rtempurl.com/api/Meeting",
+    // apiUrl: `${import.meta.env.VITE_API_BASE_URL}/Jaas/generate-token`,
+    apiUrl: `https://localhost:7285/api/Jaas/generate-token`,
+    // meetingStatusUrl: `${import.meta.env.VITE_API_BASE_URL}/Meeting`,
+    meetingStatusUrl: `https://localhost:7285/api/Meeting`,
   };
+
+  const getToken = () => localStorage.getItem("token");
 
   useEffect(() => {
     const checkAndStartMeeting = async () => {
       try {
         const response = await fetch(
-          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`
+          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`,
+          {
+            headers: {
+              Authorization: `Bearer ${getToken()}`,
+              "Content-Type": "application/json",
+            },
+          },
         );
 
         if (!response.ok) {
           throw new Error(
-            `HTTP ${response.status}: Không thể lấy thông tin phòng họp`
+            `HTTP ${response.status}: Không thể lấy thông tin phòng họp`,
           );
         }
 
         const result = await response.json();
 
-        if (result.returnCode !== 200) {
+        const isSuccess = result.success === true || result.returnCode === 200;
+        if (!isSuccess) {
           throw new Error(
-            result.message || "Không thể lấy thông tin phòng họp"
+            result.message || "Không thể lấy thông tin phòng họp",
           );
         }
 
@@ -75,17 +86,17 @@ function MeetingRoom() {
         const isUserHost = data.hostName === userEmail;
         setIsModerator(isUserHost);
 
+        const isStarted = data.status === "Live" || data.isStarted === true;
+
         setMeetingStatus({
           isChecking: false,
           requireHostToStart: data.requireHostToStart || false,
-          isStarted: data.isStarted || false,
+          isStarted,
           hostName: data.hostName || "",
         });
 
-        if (isUserHost && !data.isStarted) {
-          const token = localStorage.getItem("token");
-
-          if (!token) {
+        if (isUserHost && !isStarted) {
+          if (!getToken()) {
             setLoadError("Vui lòng đăng nhập lại để bắt đầu cuộc họp");
             return;
           }
@@ -95,28 +106,33 @@ function MeetingRoom() {
             {
               method: "POST",
               headers: {
-                "Authorization": `Bearer ${token}`,
+                Authorization: `Bearer ${getToken()}`,
                 "Content-Type": "application/json",
               },
-            }
+            },
           );
 
           if (!startResponse.ok) {
             if (startResponse.status === 401) {
               setLoadError(
-                "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+                "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
               );
               setTimeout(() => navigate("/login"), 2000);
               return;
             }
-            throw new Error("Không thể bắt đầu cuộc họp");
+            if (startResponse.status !== 400) {
+              throw new Error("Không thể bắt đầu cuộc họp");
+            }
+          } else {
+            const startResult = await startResponse.json();
+            const startOk =
+              startResult.success === true || startResult.returnCode === 200;
+            if (startOk) {
+              setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
+            }
           }
 
-          const startResult = await startResponse.json();
-
-          if (startResult.returnCode === 200) {
-            setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
-          }
+          setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
         }
       } catch (error) {
         setLoadError(error.message);
@@ -142,20 +158,19 @@ function MeetingRoom() {
     pollIntervalRef.current = setInterval(async () => {
       try {
         const response = await fetch(
-          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`
+          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`,
+          {
+            headers: { Authorization: `Bearer ${getToken()}` },
+          },
         );
-
         if (!response.ok) return;
-
         const result = await response.json();
-
-        if (result.returnCode === 200 && result.data.isStarted) {
+        const data = result.data;
+        const isStarted = data?.status === "Live" || data?.isStarted === true;
+        if (isStarted) {
           setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
-
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-          }
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
         }
       } catch (error) {}
     }, 3000);
@@ -176,21 +191,19 @@ function MeetingRoom() {
     hostEndPollRef.current = setInterval(async () => {
       try {
         const response = await fetch(
-          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`
+          `${JAAS_CONFIG.meetingStatusUrl}/${roomName}/status`,
+          {
+            headers: { Authorization: `Bearer ${getToken()}` },
+          },
         );
-
         if (!response.ok) return;
-
         const result = await response.json();
-
-        if (result.returnCode === 200 && !result.data.isStarted) {
+        const data = result.data;
+        const isStillLive = data?.status === "Live" || data?.isStarted === true;
+        if (!isStillLive) {
           setHostEndedMeeting(true);
-
-          if (hostEndPollRef.current) {
-            clearInterval(hostEndPollRef.current);
-            hostEndPollRef.current = null;
-          }
-
+          clearInterval(hostEndPollRef.current);
+          hostEndPollRef.current = null;
           if (apiRef.current) {
             try {
               apiRef.current.executeCommand("hangup");
@@ -198,10 +211,7 @@ function MeetingRoom() {
               apiRef.current = null;
             } catch (error) {}
           }
-
-          setTimeout(() => {
-            handleMeetingEnd();
-          }, 2000);
+          setTimeout(() => handleMeetingEnd(), 2000);
         }
       } catch (error) {}
     }, 2000);
@@ -215,26 +225,22 @@ function MeetingRoom() {
   }, [meetingStatus, roomName, isModerator]);
 
   useEffect(() => {
-    if (meetingStatus.isChecking) {
-      return;
-    }
-
+    if (meetingStatus.isChecking) return;
     if (
       meetingStatus.requireHostToStart &&
       !meetingStatus.isStarted &&
       !isModerator
-    ) {
+    )
       return;
-    }
 
     const loadJitsiScript = () => {
       if (window.JitsiMeetExternalAPI) {
         initJitsi();
         return;
       }
-
       const script = document.createElement("script");
       script.src = `https://8x8.vc/${JAAS_CONFIG.appId}/external_api.js`;
+      console.log("Loading Jitsi script:", script.src);
       script.async = true;
       script.onload = () => {
         setIsJitsiLoaded(true);
@@ -242,15 +248,17 @@ function MeetingRoom() {
       };
       script.onerror = () => {
         setLoadError(
-          "Không thể tải Jitsi Meet. Vui lòng kiểm tra kết nối internet."
+          "Không thể tải Jitsi Meet. Vui lòng kiểm tra kết nối internet.",
         );
       };
       document.body.appendChild(script);
     };
 
     const initJitsi = async () => {
-      if (!jitsiContainerRef.current || apiRef.current) return;
+      if (hasInitialized.current) return;
 
+      if (!jitsiContainerRef.current || apiRef.current) return;
+      hasInitialized.current = true;
       try {
         const displayName = userName || guestName || "Người dùng";
 
@@ -258,45 +266,42 @@ function MeetingRoom() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
           },
           body: JSON.stringify({
-            roomName: roomName,
+            roomName,
             userName: displayName,
-            email: `${displayName
-              .toLowerCase()
-              .replace(/\s/g, "")}@example.com`,
+            email:
+              userEmail !== "guest@example.com"
+                ? userEmail
+                : `${displayName.toLowerCase().replace(/\s/g, "")}@guest.com`,
             avatarUrl: "",
-            isModerator: isModerator,
+            isModerator,
             expiresInMinutes: 120,
           }),
         });
-
+        console.log("Token response status:", res);
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
           throw new Error(
-            errorData.error || `HTTP ${res.status}: Không lấy được token`
+            errorData.error || `HTTP ${res.status}: Không lấy được token`,
           );
         }
 
         const data = await res.json();
+        console.log("Token response data:", data);
+        if (!data.success || !data.token) throw new Error("Token không hợp lệ");
 
-        if (!data.success || !data.token) {
-          throw new Error("Token không hợp lệ trong response");
-        }
-
-        const jwt = data.token;
-        const appId = data.appId;
-        const fullRoomName = data.roomName;
-
+        console.log("[Jitsi] init →", `${data.appId}/${data.roomName}`);
         const options = {
-          roomName: `${appId}/${fullRoomName}`,
+          roomName: `${data.appId}/${data.roomName}`,
           width: "100%",
           height: "100%",
           parentNode: jitsiContainerRef.current,
-          jwt: jwt,
+          jwt: data.token,
           configOverwrite: {
-            startWithAudioMuted: false,
-            startWithVideoMuted: false,
+            startWithAudioMuted: true,
+            startWithVideoMuted: true,
             enableWelcomePage: false,
             prejoinPageEnabled: false,
             disableDeepLinking: true,
@@ -337,77 +342,78 @@ function MeetingRoom() {
             displayName: displayName,
           },
         };
+        console.log("Jitsi options:", options);
 
         apiRef.current = new window.JitsiMeetExternalAPI(
           JAAS_CONFIG.domain,
-          options
+          options,
         );
 
         apiRef.current.addEventListener("videoConferenceJoined", () => {
+          console.log("[Jitsi] joined!");
           setIsJitsiLoaded(true);
         });
 
         apiRef.current.addEventListener("videoConferenceLeft", async () => {
           if (isModerator) {
-            const token = localStorage.getItem("token");
-
-            if (token) {
-              try {
-                await fetch(`${JAAS_CONFIG.meetingStatusUrl}/${roomName}/end`, {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                  },
-                });
-              } catch (error) {}
-            }
-          } else {
+            try {
+              await fetch(`${JAAS_CONFIG.meetingStatusUrl}/${roomName}/end`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${getToken()}`,
+                  "Content-Type": "application/json",
+                },
+              });
+            } catch (error) {}
           }
           const joinToken = sessionStorage.getItem("joinToken");
           if (joinToken) {
-            await fetch(`${JAAS_CONFIG.meetingStatusUrl}/leave`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ joinToken }),
-            });
+            try {
+              await fetch(`${JAAS_CONFIG.meetingStatusUrl}/leave`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ joinToken }),
+              });
+              sessionStorage.removeItem("joinToken");
+              sessionStorage.removeItem("guestName");
+            } catch (error) {}
           }
           handleMeetingEnd();
         });
 
-        apiRef.current.addEventListener("readyToClose", () => {
-          handleMeetingEnd();
-        });
+        apiRef.current.addEventListener("readyToClose", () =>
+          handleMeetingEnd(),
+        );
       } catch (error) {
         setLoadError(
-          error.message || "Không thể khởi tạo phòng họp. Vui lòng thử lại."
+          error.message || "Không thể khởi tạo phòng họp. Vui lòng thử lại.",
         );
       }
     };
 
     loadJitsiScript();
-
     return () => {
       if (apiRef.current) {
         try {
-          apiRef.current.dispose();
-          apiRef.current = null;
+          // // apiRef.current.dispose();
+          // apiRef.current = null;
         } catch (error) {}
       }
     };
-  }, [roomName, userName, guestName, isModerator, meetingStatus]);
-
+  }, [roomName, isModerator, meetingStatus.isStarted]);
+  useEffect(() => {
+    return () => {
+      try {
+        apiRef.current?.dispose();
+        apiRef.current = null;
+      } catch (_) {}
+    };
+  }, []); // Chỉ chạy khi unmount
   const handleMeetingEnd = () => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
-
     setTimeout(() => {
-      const savedUser = localStorage.getItem("user");
-      if (savedUser != null) {
-        navigate("/dashboard");
-      } else {
-        navigate("/");
-      }
+      navigate(parsedUser ? "/dashboard" : "/");
     }, 1000);
   };
 
@@ -425,7 +431,6 @@ function MeetingRoom() {
               </h2>
               <p className="text-indigo-100">Host đã kết thúc cuộc họp</p>
             </div>
-
             <div className="p-8 text-center">
               <p className="text-gray-600 mb-6">
                 Bạn sẽ được chuyển về trang chủ trong giây lát...
@@ -447,13 +452,10 @@ function MeetingRoom() {
       <WaitingRoom
         roomCode={roomName}
         userName={userName || guestName}
-        onHostJoined={() => {
-          setMeetingStatus((prev) => ({ ...prev, isStarted: true }));
-        }}
-        onCancel={() => {
-          const savedUser = localStorage.getItem("user");
-          navigate(savedUser ? "/dashboard" : "/");
-        }}
+        onHostJoined={() =>
+          setMeetingStatus((prev) => ({ ...prev, isStarted: true }))
+        }
+        onCancel={() => navigate(parsedUser ? "/dashboard" : "/")}
       />
     );
   }
@@ -475,10 +477,7 @@ function MeetingRoom() {
               Thử lại
             </button>
             <button
-              onClick={() => {
-                const savedUser = localStorage.getItem("user");
-                navigate(savedUser ? "/dashboard" : "/");
-              }}
+              onClick={() => navigate(parsedUser ? "/dashboard" : "/")}
               className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
             >
               Quay lại trang chủ
@@ -493,7 +492,6 @@ function MeetingRoom() {
     <div className="w-screen h-screen flex flex-col bg-gray-900 overflow-hidden">
       <div className="flex-1 relative">
         <div ref={jitsiContainerRef} className="absolute inset-0" />
-
         {!isJitsiLoaded && !loadError && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-90">
             <div className="text-center">

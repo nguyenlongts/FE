@@ -22,7 +22,11 @@ import {
   Crown,
   Check,
 } from "lucide-react";
-
+import {
+  getMeetingsByHost,
+  deleteMeeting,
+  checkRoomCode,
+} from "../api/meetingApi";
 function DashboardPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -52,78 +56,71 @@ function DashboardPage() {
     const m = duration % 60;
     return `${h > 0 ? h + "h " : ""}${m > 0 ? m + "m" : ""}`;
   };
+  const processMeetings = (meetingList) => {
+    const upcoming = [];
+    const completed = [];
+    let totalParticipants = 0;
+    let totalDuration = 0;
 
+    meetingList.forEach((m) => {
+      if (!m.scheduledDateTime) return;
+
+      const meetingDate = new Date(m.scheduledDateTime);
+      const now = new Date();
+      const status = meetingDate > now ? "upcoming" : "completed";
+
+      const meeting = {
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        roomCode: m.roomCode,
+        hostName: m.hostName,
+        isPasswordProtected: m.isPasswordProtected,
+        durationRaw: m.duration,
+        date: meetingDate.toLocaleDateString(),
+        time: meetingDate.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        duration: formatDuration(m.duration),
+        participants: m.participants || 0,
+        status,
+      };
+
+      totalParticipants += meeting.participants;
+      totalDuration += m.duration || 0;
+
+      if (status === "upcoming") upcoming.push(meeting);
+      else completed.push(meeting);
+    });
+
+    setUpcomingMeetings(upcoming);
+    setCompletedMeetings(completed);
+
+    setStats({
+      totalMeetings: meetingList.length,
+      upcomingMeetings: upcoming.length,
+      totalParticipants,
+      avgDuration: formatDuration(
+        Math.floor(totalDuration / meetingList.length || 0),
+      ),
+    });
+  };
   useEffect(() => {
     const fetchMeetings = async () => {
       try {
-        const response = await fetch(
-          `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/by-email?email=${user.email}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const response = await getMeetingsByHost(user.email, token);
         const data = await response.json();
         if (!data.data) return;
 
-        const upcoming = [];
-        const completed = [];
-        let totalParticipants = 0;
-        let totalDuration = 0;
-
-        data.data.forEach((m) => {
-          let meetingDate = new Date(m.scheduledDate);
-          if (m.scheduledTime) {
-            const [hours, minutes] = m.scheduledTime.split(":").map(Number);
-            meetingDate.setHours(hours, minutes, 0, 0);
-          }
-
-          const now = new Date();
-          const status = meetingDate > now ? "upcoming" : "completed";
-
-          const meeting = {
-            id: m.id,
-            title: m.title,
-            description: m.description,
-            roomCode: m.roomCode,
-            hostName: m.hostName,
-            isPasswordProtected: m.isPasswordProtected,
-            scheduledDateRaw: m.scheduledDate,
-            scheduledTimeRaw: m.scheduledTime,
-            durationRaw: m.duration,
-            date: meetingDate.toLocaleDateString(),
-            time:
-              m.scheduledTime ||
-              meetingDate.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            duration: formatDuration(m.duration),
-            participants: m.participants || 0,
-            status: status,
-          };
-
-          totalParticipants += meeting.participants;
-          totalDuration += m.duration || 0;
-
-          if (status === "upcoming") upcoming.push(meeting);
-          else completed.push(meeting);
-        });
-
-        setUpcomingMeetings(upcoming);
-        setCompletedMeetings(completed);
-        setStats({
-          totalMeetings: data.data.length,
-          upcomingMeetings: upcoming.length,
-          totalParticipants,
-          avgDuration: formatDuration(
-            Math.floor(totalDuration / data.data.length)
-          ),
-        });
+        processMeetings(data.data);
       } catch (error) {
         console.error(error);
       }
     };
 
     fetchMeetings();
-  }, [user.email]);
+  }, [user.email, token]);
 
   const validateJoin = () => {
     if (!quickJoinCode.trim()) {
@@ -142,9 +139,7 @@ function DashboardPage() {
 
     try {
       setQuickJoinError("");
-      const res = await fetch(
-        `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/check/${quickJoinCode}`
-      );
+      const res = await checkRoomCode(quickJoinCode);
       const data = await res.json();
       if (data.data === false) {
         setQuickJoinError("Mã phòng không tồn tại");
@@ -165,67 +160,29 @@ function DashboardPage() {
     if (!window.confirm("Bạn có chắc muốn xóa cuộc họp này?")) return;
 
     try {
-      const response = await fetch(
-        `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await deleteMeeting(id, token);
       const result = await response.json();
 
-      if (result.data) {
-        const resMeetings = await fetch(
-          `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/by-email?email=${user.email}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const dataMeetings = await resMeetings.json();
-
-        if (!dataMeetings.data) return;
-
-        const upcoming = [];
-        const completed = [];
-
-        dataMeetings.data.forEach((m) => {
-          const scheduledDate = new Date(m.scheduledDate);
-          const now = new Date();
-          const meeting = {
-            id: m.id,
-            title: m.title,
-            date: scheduledDate.toLocaleDateString(),
-            time:
-              m.scheduledTime ||
-              scheduledDate.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            duration: formatDuration(m.duration),
-            participants: m.participants || 0,
-            status: scheduledDate > now ? "upcoming" : "completed",
-            roomCode: m.roomCode,
-            isPasswordProtected: m.isPasswordProtected,
-            hostName: m.hostName,
-          };
-
-          if (meeting.status === "upcoming") upcoming.push(meeting);
-          else completed.push(meeting);
-        });
-
-        setUpcomingMeetings(upcoming);
-        setCompletedMeetings(completed);
-
+      if (result.success) {
         toast.success("Xóa phòng họp thành công!");
+        const res = await getMeetingsByHost(user.email, token);
+        const data = await res.json();
+
+        if (data.data) {
+          processMeetings(data.data);
+        }
       } else {
-        toast.error("Xóa thất bại. Vui lòng thử lại.");
+        toast.error("Xóa thất bại.");
       }
     } catch (error) {
       console.error(error);
-      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
+      toast.error("Có lỗi xảy ra.");
     }
   };
-
   const handleJoinMeeting = async (meeting) => {
     try {
       navigate(`/meeting/${meeting.roomCode}`);
+      console.log("Navigating to meeting:", meeting.roomCode);
     } catch (error) {
       console.error(error);
       toast.error("Không thể tham gia cuộc họp.");
@@ -510,7 +467,11 @@ function DashboardPage() {
               setShowEditModal(false);
               setEditingMeeting(null);
             }}
-            onUpdated={() => window.location.reload()}
+            onUpdated={async () => {
+              const res = await getMeetingsByHost(user.email, token);
+              const data = await res.json();
+              processMeetings(data.data);
+            }}
           />
         )}
         {showProfileModal && (

@@ -8,6 +8,7 @@ function HomePage() {
   const [guestName, setGuestName] = useState("");
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const validateJoin = () => {
     const newErrors = {};
@@ -29,26 +30,41 @@ function HomePage() {
   };
 
   const handleJoinMeeting = async () => {
-    if (!validateJoin()) return;
+    console.log("1. handleJoinMeeting called");
+
+    if (!validateJoin()) {
+      console.log("2. validateJoin failed");
+      return;
+    }
 
     setIsLoading(true);
-    try {
-      const checkResponse = await fetch(
-        `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/check/${encodeURIComponent(
-          roomCode
-        )}`
-      );
-      const checkResult = await checkResponse.json();
 
-      if (!checkResult.data) {
-        setErrors({ ...errors, roomCode: "Phòng họp không tồn tại" });
+    try {
+      console.log("3. Checking room:", roomCode);
+
+      const checkResponse = await fetch(
+        `${API_BASE}/Meeting/check/${encodeURIComponent(roomCode)}`,
+      );
+
+      console.log("4. checkResponse status:", checkResponse.status);
+
+      const checkResult = await checkResponse.json();
+      console.log("5. checkResult:", checkResult);
+
+      if (!checkResult.success || !checkResult.data) {
+        console.log("6. Room not found");
+
+        setErrors({
+          ...errors,
+          roomCode: checkResult.message || "Phòng họp không tồn tại",
+        });
         return;
       }
 
+      console.log("7. Joining meeting...");
+
       const joinResponse = await fetch(
-        `https://kiritsu2210-001-site1.rtempurl.com/api/Meeting/${encodeURIComponent(
-          roomCode
-        )}/join`,
+        `${API_BASE}/Meeting/${encodeURIComponent(roomCode)}/join`,
         {
           method: "POST",
           headers: {
@@ -58,23 +74,38 @@ function HomePage() {
             userEmail: null,
             guestName: guestName.trim(),
           }),
-        }
+        },
       );
 
+      console.log("8. joinResponse status:", joinResponse.status);
+
       const joinResult = await joinResponse.json();
-      if (joinResult.returnCode !== 200) {
+      console.log("9. joinResult:", joinResult);
+
+      // 🔥 fix theo ApiResponse<T>
+      if (!joinResult.success) {
+        console.log("10. Join failed");
+
         setErrors({
           ...errors,
           roomCode: joinResult.message || "Lỗi khi tham gia",
         });
         return;
       }
+
+      console.log("11. Navigating...");
+
       sessionStorage.setItem("guestName", guestName.trim());
       sessionStorage.setItem("joinToken", joinResult.data.joinToken);
+
       navigate(`/meeting/${roomCode}`);
     } catch (error) {
       console.error("Lỗi khi tham gia phòng họp:", error);
-      setErrors({ ...errors, roomCode: "Không thể kết nối tới server" });
+
+      setErrors({
+        ...errors,
+        roomCode: "Không thể kết nối tới server",
+      });
     } finally {
       setIsLoading(false);
     }

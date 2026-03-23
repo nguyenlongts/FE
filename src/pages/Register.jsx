@@ -105,32 +105,37 @@ function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        "https://kiritsu2210-001-site1.rtempurl.com/api/Auth/register",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            name: formData.fullName,
-            email: formData.email,
-            password: formData.password,
-          }),
-        }
-      );
+      const response = await fetch("http://localhost:8081/api/Auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        alert("Đăng ký thất bại: " + errorData.message || response.statusText);
-      } else {
-        alert("Đăng ký thành công! Chuyển đến trang đăng nhập...");
-        window.location.href = "/login";
+        let errorMessage = "Đăng ký thất bại";
+
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.message || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+
+        throw new Error(errorMessage);
       }
+
+      alert("Đăng ký thành công!");
+      window.location.href = "/login";
     } catch (error) {
       console.error("Error:", error);
-      alert("Có lỗi xảy ra. Vui lòng thử lại sau.");
+      alert(error.message || "Có lỗi xảy ra. Vui lòng thử lại sau.");
     } finally {
       setIsLoading(false);
     }
@@ -236,8 +241,8 @@ function RegisterPage() {
                         passwordStrength < 40
                           ? "text-red-600"
                           : passwordStrength < 70
-                          ? "text-yellow-600"
-                          : "text-green-600"
+                            ? "text-yellow-600"
+                            : "text-green-600"
                       }`}
                     >
                       {getPasswordStrengthText()}

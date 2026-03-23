@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, Lock, LogOut, Plus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+// import NotificationBell from "./NotificationBell";
 
 function DashboardHeader() {
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -26,6 +27,9 @@ function DashboardHeader() {
             <Plus className="w-5 h-5" />
             <span>Tạo phòng mới</span>
           </button>
+
+          {/* Nút thông báo kiểu FB */}
+          {/* <NotificationBell /> */}
 
           <div className="relative">
             <button

@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { AuthProvider } from "../context/AuthContext";
+// import { NotificationProvider } from "../context/NotificationContext";
 import PublicRoute from "../components/PublicRoute";
 import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -20,6 +21,7 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        {/* <NotificationProvider> */}
         <Routes>
           <Route element={<PublicRoute />}>
             <Route path="/" element={<HomePage />} />
@@ -69,6 +71,7 @@ function AppRoutes() {
           <Route path="/meeting/:roomName" element={<MeetingRoom />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        {/* </NotificationProvider> */}
       </AuthProvider>
     </BrowserRouter>
   );
