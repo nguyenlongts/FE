@@ -1,13 +1,21 @@
-import React from "react";
-import AppRoutes from "./routes/AppRoutes";
+import React, { useEffect } from "react";
+import AppRoutes from "./routes/router";
 import { Toaster } from "react-hot-toast";
+import { Outlet } from "react-router-dom";
+import Sidebar from "./pages/dashboard/Sidebar";
+import Header from "./pages/dashboard/Header";
 
 function App() {
   return (
     <>
       <Toaster position="top-right" reverseOrder={false} />
-
-      <AppRoutes />
+      <div className="flex w-full h-screen">
+        <Sidebar/>
+        <div className="flex flex-col w-full bg-[#292937]">
+          <Header/>
+          <Outlet/>
+        </div>
+      </div>
     </>
   );
 }

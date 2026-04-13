@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   Video,
   Mail,
@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 const LoginPage = () => {
-  const API_BASE = `${import.meta.env.VITE_API_BASE_URL}`;
+  const API_BASE = "http://localhost:5555";
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -77,6 +77,10 @@ const LoginPage = () => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const handleLogin()=async ()=>{
+    
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -194,47 +198,47 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-blue-50">
+      <div className="w-full max-w-md">
         {/* Back to Home Button */}
         <button
           onClick={handleBackToHome}
-          className="mb-6 flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition group"
+          className="flex items-center mb-6 space-x-2 text-gray-600 transition hover:text-gray-900 group"
         >
-          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
           <span>Quay lại trang chủ</span>
         </button>
 
         {/* Logo & Title */}
-        <div className="text-center mb-8">
+        <div className="mb-8 text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-[#2D8CFF] p-3 rounded-2xl shadow-lg">
               <Video className="w-12 h-12 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="mb-2 text-3xl font-bold text-gray-900">
             Chào mừng trở lại
           </h1>
           <p className="text-gray-600">Đăng nhập để tiếp tục vào TLU Meeting</p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-xl p-8">
+        <div className="p-8 bg-white border border-gray-200 shadow-xl rounded-2xl">
           {loginError && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3">
+            <div className="flex items-start p-4 mb-6 space-x-3 border border-red-200 rounded-lg bg-red-50">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-red-700 text-sm">{loginError}</p>
+              <p className="text-sm text-red-700">{loginError}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Field */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                 <input
                   type="email"
                   name="email"
@@ -266,7 +270,7 @@ const LoginPage = () => {
                 </button>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
@@ -280,7 +284,7 @@ const LoginPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                  className="absolute text-gray-400 transition transform -translate-y-1/2 right-3 top-1/2 hover:text-gray-600"
                 >
                   {showPassword ? (
                     <EyeOff className="w-5 h-5" />
@@ -308,8 +312,8 @@ const LoginPage = () => {
             </button>
 
             {/* Register Link */}
-            <div className="text-center pt-4 border-t border-gray-200">
-              <p className="text-gray-600 text-sm">
+            <div className="pt-4 text-center border-t border-gray-200">
+              <p className="text-sm text-gray-600">
                 Chưa có tài khoản?{" "}
                 <button
                   type="button"
@@ -326,18 +330,18 @@ const LoginPage = () => {
 
       {/* Forgot Password Modal */}
       {showForgotPassword && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="w-full max-w-md p-8 bg-white shadow-2xl rounded-2xl animate-fade-in">
             {forgotSuccess ? (
               // Success Message
               <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full">
                   <Check className="w-8 h-8 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="mb-2 text-2xl font-bold text-gray-900">
                   Đã gửi email!
                 </h2>
-                <p className="text-gray-600 mb-6">
+                <p className="mb-6 text-gray-600">
                   Vui lòng kiểm tra email của bạn để đặt lại mật khẩu.
                 </p>
                 <button
@@ -350,11 +354,11 @@ const LoginPage = () => {
             ) : (
               // Forgot Password Form
               <>
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="mb-6 text-center">
+                  <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full">
                     <Mail className="w-8 h-8 text-[#2D8CFF]" />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h2 className="mb-2 text-2xl font-bold text-gray-900">
                     Quên mật khẩu?
                   </h2>
                   <p className="text-gray-600">
@@ -363,9 +367,9 @@ const LoginPage = () => {
                 </div>
 
                 {forgotError && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3">
+                  <div className="flex items-start p-4 mb-4 space-x-3 border border-red-200 rounded-lg bg-red-50">
                     <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-red-700 text-sm">{forgotError}</p>
+                    <p className="text-sm text-red-700">{forgotError}</p>
                   </div>
                 )}
 
@@ -374,11 +378,11 @@ const LoginPage = () => {
                   className="space-y-4"
                 >
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
                       Email
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Mail className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                       <input
                         type="email"
                         value={forgotEmail}
@@ -396,7 +400,7 @@ const LoginPage = () => {
                     <button
                       type="button"
                       onClick={handleCloseForgotPassword}
-                      className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+                      className="flex-1 py-3 font-medium text-gray-700 transition border-2 border-gray-300 rounded-lg hover:bg-gray-50"
                     >
                       Hủy
                     </button>
