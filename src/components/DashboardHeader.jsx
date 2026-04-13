@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 
 function DashboardHeader() {
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, logout } = useAuth();
+  // const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -15,8 +15,8 @@ function DashboardHeader() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">
-            Xin chào, {user?.name}!
-            <span className="text-xs text-gray-400 ml-2">({user?.email})</span>
+            Xin chào,...!
+            <span className="text-xs text-gray-400 ml-2">("email")</span>
           </p>
         </div>
         <div className="flex items-center space-x-3 relative">
