@@ -11,9 +11,8 @@ import { NotificationProvider } from "./context/NotificationContext";
 createRoot(document.getElementById("root")).render(
   <Provider store={store}>
     <AuthProvider>
-      <NotificationProvider>
-        <RouterProvider router={router} />
-      </NotificationProvider>
+      <RouterProvider router={router} />
+      router
     </AuthProvider>
   </Provider>,
 );

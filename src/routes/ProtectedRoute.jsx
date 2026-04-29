@@ -1,19 +1,28 @@
 // src/components/ProtectedRoute.jsx
 import { useSelector } from "react-redux";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { selectAccessToken, selectIsRestoring, selectRefreshToken } from "../redux/features/auth/authSlice";
+import {
+  selectAccessToken,
+  selectIsRestoring,
+  selectRefreshToken,
+} from "../redux/features/auth/authSlice";
 
 const ProtectedRoute = () => {
   const accessToken = useSelector(selectAccessToken);
-  const refreshToken=useSelector(selectRefreshToken)
-    const isStoring=useSelector(selectIsRestoring)
-    
-  // Còn refreshToken nghĩa là đang trong quá trình restore session (F5)
-  // → chưa có accessToken nhưng chưa hẳn là chưa đăng nhập
-  if(isStoring) return <>Đang tải</>
-  if (!refreshToken) {
-    return <Navigate to="/login"  />;
-  }
+  const refreshToken = useSelector(selectRefreshToken);
+  const isRestoring = useSelector(selectIsRestoring);
+
+  if (isRestoring)
+    return (
+      <div className="flex items-center justify-center w-full h-screen bg-[#292937]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-400 text-sm">Đang tải...</p>
+        </div>
+      </div>
+    );
+
+  if (!refreshToken) return <Navigate to="/login" />;
 
   return <Outlet />;
 };

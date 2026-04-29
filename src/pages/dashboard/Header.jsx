@@ -39,10 +39,10 @@ const Header = () => {
           </div>
 
           {/* Notification */}
-          <button className="relative p-2 transition-colors text-slate-400 hover:text-white">
+          <div className="relative p-2 transition-colors text-slate-400 hover:text-white">
             <NotificationBell />
             <span className="absolute w-2 h-2 bg-red-500 rounded-full top-1 right-1" />
-          </button>
+          </div>
 
           {/* User Avatar */}
           <div className="flex items-center justify-center w-10 h-10 text-sm font-bold text-white transition-shadow rounded-full cursor-pointer bg-gradient-to-br from-pink-400 via-purple-400 to-blue-400 hover:shadow-lg hover:shadow-purple-500/50">

@@ -7,6 +7,8 @@ import React, {
 } from "react";
 import * as signalR from "@microsoft/signalr";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { selectAccessToken } from "../redux/features/auth/authSlice";
 import {
   getNotifications,
@@ -15,25 +17,21 @@ import {
 } from "../api/notificationApi";
 
 const NotificationContext = createContext(null);
-
-// SignalR hub URL — Notification Service port 5262
 const HUB_URL = "http://localhost:5555/hubs/notification";
 
 export const NotificationProvider = ({ children }) => {
-  // Dùng Redux token (accessToken) thay vì AuthContext
   const token = useSelector(selectAccessToken);
   const isRestoring = useSelector((state) => state.auth.isRestoring);
   const isAuthenticated = !!token && !isRestoring;
   const [notifications, setNotifications] = useState([]);
+  const navigate = useNavigate();
 
-  // ── Fetch từ REST API khi load ────────────────────────────────────────────
   const fetchNotifications = useCallback(async () => {
     if (!token) return;
     try {
       const res = await getNotifications(token);
       if (!res.ok) return;
       const data = await res.json();
-      // BE trả về List<Notification> trực tiếp
       setNotifications(Array.isArray(data) ? data : []);
     } catch {}
   }, [token]);
@@ -46,7 +44,6 @@ export const NotificationProvider = ({ children }) => {
     fetchNotifications();
   }, [isAuthenticated, fetchNotifications]);
 
-  // ── SignalR ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthenticated || !token) return;
 
@@ -56,8 +53,6 @@ export const NotificationProvider = ({ children }) => {
       .configureLogging(signalR.LogLevel.Warning)
       .build();
 
-    // Invitee nhận lời mời mới — InviteNotificationDto:
-    // { inviteId, roomCode, hostName, hostEmail, title, joinLink, expiresAt }
     conn.on("ReceiveInvite", (payload) => {
       setNotifications((prev) => [
         {
@@ -72,8 +67,39 @@ export const NotificationProvider = ({ children }) => {
       ]);
     });
 
-    // Host nhận kết quả — InviteResponseDto:
-    // { inviteId, roomCode, inviteeEmail, status }
+    conn.on("MeetingStarted", (data) => {
+      setNotifications((prev) => [
+        {
+          notificationId: Date.now(),
+          type: "MeetingStarted",
+          title: `Phòng "${data.title}" đã bắt đầu`,
+          payload: JSON.stringify(data),
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
+
+      toast(
+        (t) => (
+          <div className="flex items-center gap-3">
+            <span>
+              🔴 Phòng <b>{data.title}</b> đã bắt đầu
+            </span>
+            <button
+              onClick={() => {
+                navigate(data.joinLink);
+                toast.dismiss(t.id);
+              }}
+              className="px-2 py-1 bg-purple-500 text-white text-xs rounded shrink-0"
+            >
+              Tham gia ngay
+            </button>
+          </div>
+        ),
+        { duration: 10000 },
+      );
+    });
     conn.on("ReceiveInviteResponse", (payload) => {
       const statusLabel =
         payload.status === "Accepted" ? "chấp nhận" : "từ chối";
@@ -99,7 +125,6 @@ export const NotificationProvider = ({ children }) => {
     return () => conn.stop();
   }, [isAuthenticated, token]);
 
-  // ── Mark read ─────────────────────────────────────────────────────────────
   const markAllRead = useCallback(async () => {
     if (!token) return;
     try {
@@ -112,7 +137,6 @@ export const NotificationProvider = ({ children }) => {
     async (id) => {
       if (!token) return;
       try {
-        // id từ DB là số nguyên; id tạm từ SignalR là Date.now() (số lớn) — chỉ gọi API khi là ID DB hợp lệ
         if (typeof id === "number" && id < 1e12) {
           await markOneAsRead(id, token);
         }

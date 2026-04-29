@@ -64,10 +64,7 @@ export default function InvitePopup() {
     try {
       const res = await acceptInvite(inv.parsedPayload.inviteId, token);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      toast.success("Đã chấp nhận! Đang vào phòng...");
-      const link =
-        inv.parsedPayload.joinLink || `/meet/${inv.parsedPayload.roomCode}`;
-      navigate(link);
+      toast.success("Đã chấp nhận! Bạn sẽ được thông báo khi phòng bắt đầu.");
     } catch (err) {
       toast.error("Không thể chấp nhận lời mời: " + err.message);
     }
