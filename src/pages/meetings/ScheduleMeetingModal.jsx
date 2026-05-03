@@ -270,58 +270,77 @@ const optionsRequireHostToStart = [
   { value: false, label: "Không cần host" },
 ];
 
-const EMPTY_FORM = {
-  title: "",
-  description: "",
-  scheduledDateTime: "",
-  duration: 60,
-  requireHostToStart: false,
-};
+// const EMPTY_FORM = {
+//   title: "",
+//   description: "",
+//   scheduledDateTime: "",
+//   duration: 60,
+//   requireHostToStart: false,
+// };
 
-/**
- * Props:
- *  isOpen        : boolean
- *  onClose       : () => void
- *  hostEmail     : string
- *  type          : "now" | "schedule" | "edit"
- *  meeting       : object | null   — required when type === "edit"
- *                  { id, title, description, scheduledDateTime, duration, requireHostToStart }
- */
-const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type, meeting }) => {
+// /**
+//  * Props:
+//  *  isOpen        : boolean
+//  *  onClose       : () => void
+//  *  hostEmail     : string
+//  *  type          : "now" | "schedule" | "edit"
+//  *  meeting       : object | null   — required when type === "edit"
+//  *                  { id, title, description, scheduledDateTime, duration, requireHostToStart }
+//  */
+// const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type, meeting }) => {
+//   const navigate = useNavigate();
+//   const isEdit = type === "edit";
+
+//   const [formData, setFormData] = useState(EMPTY_FORM);
+
+//   const [scheduleMeeting, { isLoading: isCreating }] = useScheduleMeetingMutation();
+//   // const [updateMeeting,   { isLoading: isUpdating  }] = useUpdateMeetingMutation();
+//   const isLoading = isCreating 
+//   // || isUpdating;
+
+//   // Populate form whenever modal opens or meeting changes
+//   useEffect(() => {
+//     if (!isOpen) return;
+
+//     if (isEdit && meeting) {
+//       const dt = meeting.scheduledDateTime
+//         ? new Date(meeting.scheduledDateTime).toISOString().slice(0, 16)
+//         : "";
+//       setFormData({
+//         title:               meeting.title               ?? "",
+//         description:         meeting.description         ?? "",
+//         scheduledDateTime:   dt,
+//         duration:            meeting.duration            ?? 60,
+//         requireHostToStart:  meeting.requireHostToStart  ?? false,
+//       });
+//     } else if (type === "now") {
+//       setFormData((prev) => ({
+//         ...EMPTY_FORM,
+//         scheduledDateTime: new Date().toISOString(),
+//       }));
+//     } else {
+//       setFormData(EMPTY_FORM);
+//     }
+//   }, [isOpen, type, meeting]);
+const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type }) => {
   const navigate = useNavigate();
-  const isEdit = type === "edit";
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    scheduledDateTime: "",
+    duration: 60,
+    requireHostToStart: false,  
+  });
 
-  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [scheduleMeeting, { isLoading }] = useScheduleMeetingMutation();
 
-  const [scheduleMeeting, { isLoading: isCreating }] = useScheduleMeetingMutation();
-  // const [updateMeeting,   { isLoading: isUpdating  }] = useUpdateMeetingMutation();
-  const isLoading = isCreating 
-  // || isUpdating;
 
-  // Populate form whenever modal opens or meeting changes
   useEffect(() => {
-    if (!isOpen) return;
-
-    if (isEdit && meeting) {
-      const dt = meeting.scheduledDateTime
-        ? new Date(meeting.scheduledDateTime).toISOString().slice(0, 16)
-        : "";
-      setFormData({
-        title:               meeting.title               ?? "",
-        description:         meeting.description         ?? "",
-        scheduledDateTime:   dt,
-        duration:            meeting.duration            ?? 60,
-        requireHostToStart:  meeting.requireHostToStart  ?? false,
-      });
-    } else if (type === "now") {
-      setFormData((prev) => ({
-        ...EMPTY_FORM,
-        scheduledDateTime: new Date().toISOString(),
-      }));
-    } else {
-      setFormData(EMPTY_FORM);
+    if (type === "now") {
+      const date = new Date(Date.now()); 
+      setFormData((prev) => ({ ...prev, scheduledDateTime: date.toISOString() }));
     }
-  }, [isOpen, type, meeting]);
+  }, [type]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -329,28 +348,23 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type, meeting }) => 
   };
 
   const handleSubmit = async () => {
-    if (!formData.title || (!isEdit && !formData.scheduledDateTime && type !== "now")) return;
+    if (!formData.title || !formData.scheduledDateTime) return;
 
+    const localDate = new Date(formData.scheduledDateTime);
     const payload = {
       hostEmail,
-      title:              formData.title,
-      description:        formData.description,
-      scheduledDateTime:  new Date(formData.scheduledDateTime).toISOString(),
-      duration:           Number(formData.duration),
+      title: formData.title,
+      description: formData.description,
+      scheduledDateTime: localDate.toISOString(),
+      duration: Number(formData.duration),
       requireHostToStart: formData.requireHostToStart,
     };
 
     try {
-      if (isEdit) {
-        // await updateMeeting({ id: meeting.id, ...payload }).unwrap();
-        toast.success("Cập nhật cuộc họp thành công");
-        onClose();
-      } else {
-        const res = await scheduleMeeting(payload).unwrap();
-        if (type === "now") navigate(`${res.data.meetingLink}`);
-        toast.success("Lên lịch thành công");
-        onClose();
-      }
+      const res = await scheduleMeeting(payload);
+      if (type === "now") navigate(`${res.data.data.meetingLink}`);
+      onClose();
+      toast.success("Lên lịch thành công");
     } catch (err) {
       console.error(err);
       toast.error("Đã xảy ra lỗi");
@@ -359,25 +373,25 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type, meeting }) => 
 
   const handleClose = () => {
     onClose();
-    setFormData(EMPTY_FORM);
+    setFormData({ title: "", description: "", scheduledDateTime: "", duration: 60, requireHostToStart: false });
   };
 
   if (!isOpen) return null;
 
   // Header label
-  const headerTitle =
-    isEdit       ? "Edit Meeting"      :
-    type === "now" ? "Start Meeting Now" :
-                   "Schedule New Meeting";
-  const headerSub =
-    isEdit ? "Update meeting details" : "Start New Meeting";
+  // const headerTitle =
+  //   isEdit       ? "Edit Meeting"      :
+  //   type === "now" ? "Start Meeting Now" :
+  //                  "Schedule New Meeting";
+  // const headerSub =
+  //   isEdit ? "Update meeting details" : "Start New Meeting";
 
-  // Submit button label
-  const submitLabel =
-    isLoading ? "Loading..." :
-    isEdit    ? "Save " :
-               "Create Meeting";
-
+  // // Submit button label
+  // const submitLabel =
+  //   isLoading ? "Loading..." :
+  //   isEdit    ? "Save " :
+  //              "Create Meeting";
+  const isEdit= false
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
       <div
@@ -391,11 +405,13 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type, meeting }) => 
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
-              {isEdit ? <Pencil size={18} color="white" /> : <Video size={18} color="white" />}
+              <Video size={18} color="white" />
             </div>
             <div>
-              <p className="text-white text-sm font-medium">{headerTitle}</p>
-              <p className="text-white/70 text-xs">{headerSub}</p>
+              <p className="text-white text-sm font-medium">
+                {type === "schedule" ? "Schedule New Meeting" : "Start Meeting Now"}
+              </p>
+              <p className="text-white/70 text-xs">Start New Meeting</p>
             </div>
           </div>
           <button
@@ -500,6 +516,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type, meeting }) => 
           </div>
 
           {/* Require Host To Start */}
+
           <div className="flex flex-col gap-2">
             <label className="text-xs uppercase tracking-wider text-white/50">
               Require Host To Start
@@ -517,12 +534,14 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type, meeting }) => 
                     <input
                       type="radio"
                       name="requireHostToStart"
+
                       checked={formData.requireHostToStart === option.value}
                       onChange={() =>
                         setFormData((prev) => ({ ...prev, requireHostToStart: option.value }))
                       }
                       className="sr-only"
                     />
+   
                     <div
                       className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
                         formData.requireHostToStart === option.value
@@ -558,7 +577,9 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type, meeting }) => 
               style={{ background: "linear-gradient(135deg, #a855f7, #7c3aed)" }}
             >
               {isEdit ? <Pencil size={16} /> : <Video size={16} />}
-              {submitLabel}
+              {/* {submitLabel} */}
+              <Video size={16} />
+              {isLoading ? "Loading..." : "Create Meeting"}
             </button>
           </div>
         </div>

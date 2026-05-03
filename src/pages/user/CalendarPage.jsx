@@ -1,153 +1,242 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
-import { useSelector } from 'react-redux'
-import { selectAccessToken } from '../../redux/features/auth/authSlice'
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { useMeetingCalendar } from "../../hooks/useMeetingCalendar";
 
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MONTHS = [
+  "JANUARY",
+  "FEBRUARY",
+  "MARCH",
+  "APRIL",
+  "MAY",
+  "JUNE",
+  "JULY",
+  "AUGUST",
+  "SEPTEMBER",
+  "OCTOBER",
+  "NOVEMBER",
+  "DECEMBER",
+];
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']
+// Tạo danh sách ngày đúng cho tháng/năm
+function buildCalendarDays(year, month) {
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // Đổi sang Monday-first
+  const startOffset = (firstDay + 6) % 7;
+  return { daysInMonth, startOffset };
+}
 
-const  CalendarPage=()=> {
-  const [currentMonth, setCurrentMonth] = useState(2) // March
-  const [currentYear, setCurrentYear] = useState(2024)
+const CalendarPage = () => {
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [selectedDate, setSelectedDate] = useState(null);
 
-  const calendarData = [
-    { date: 1, dots: ['🔴', '🔵', '🟣'] },
-    { date: 2 },
-    { date: 3 },
-    { date: 4 },
-    { date: 5 },
-    { date: 6, dots: ['⚪', '⚪', '⚪'] },
-    { date: 7 },
-    { date: 8 },
-    { date: 9, title: 'Franklin, 2+', price: '$600.00', highlighted: true },
-    { date: 10 },
-    { date: 11 },
-    { date: 12 },
-    { date: 13 },
-    { date: 14 },
-    { date: 15, dots: ['⚪', '⚪'] },
-    { date: 16 },
-    { date: 17 },
-    { date: 18, title: 'Franklin, 2+', price: '$600.00' },
-    { date: 19 },
-    { date: 20, dots: ['🟢', '🔵', '🟣'], highlighted: true },
-    { date: 21 },
-    { date: 22 },
-    { date: 23 },
-    { date: 24 },
-    { date: 25, highlighted: true },
-    { date: 26 },
-    { date: 27 },
-    { date: 28 },
-    { date: 29, dots: ['🟢', '🔵', '🟣'] },
-    { date: 30 },
-    { date: 31 },
-  ]
+  const { meetingsByDate, loading } = useMeetingCalendar();
 
   const prevMonth = () => {
     if (currentMonth === 0) {
-      setCurrentMonth(11)
-      setCurrentYear(currentYear - 1)
-    } else {
-      setCurrentMonth(currentMonth - 1)
-    }
-  }
-
+      setCurrentMonth(11);
+      setCurrentYear((y) => y - 1);
+    } else setCurrentMonth((m) => m - 1);
+  };
   const nextMonth = () => {
     if (currentMonth === 11) {
-      setCurrentMonth(0)
-      setCurrentYear(currentYear + 1)
-    } else {
-      setCurrentMonth(currentMonth + 1)
-    }
-  }
+      setCurrentMonth(0);
+      setCurrentYear((y) => y + 1);
+    } else setCurrentMonth((m) => m + 1);
+  };
 
-  const acc=useSelector(selectAccessToken)
-  console.log(acc,"ở acc");
-  
+  const { daysInMonth, startOffset } = buildCalendarDays(
+    currentYear,
+    currentMonth,
+  );
+
+  const getMeetingsForDay = (day) => {
+    const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return meetingsByDate[dateKey] || [];
+  };
+
+  const isToday = (day) =>
+    day === today.getDate() &&
+    currentMonth === today.getMonth() &&
+    currentYear === today.getFullYear();
+
+  const selectedMeetings = selectedDate ? getMeetingsForDay(selectedDate) : [];
+
   return (
     <div className="flex-1 overflow-auto">
-      <div className="p-8 mx-auto max-w-7xl">
-        {/* Calendar Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <button onClick={prevMonth} className="p-2 transition-colors rounded-lg hover:bg-slate-800">
-              <ChevronLeft className="w-5 h-5 text-slate-400" />
-            </button>
-            <h1 className="text-3xl font-bold text-white">
-              {MONTHS[currentMonth]} {currentYear}
-            </h1>
-            <button onClick={nextMonth} className="p-2 transition-colors rounded-lg hover:bg-slate-800">
-              <ChevronRight className="w-5 h-5 text-slate-400" />
-            </button>
+      <div className="p-8 mx-auto max-w-7xl flex gap-6">
+        {/* Calendar */}
+        <div className="flex-1">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={prevMonth}
+                className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-slate-400" />
+              </button>
+              <h1 className="text-2xl font-bold text-white">
+                {MONTHS[currentMonth]} {currentYear}
+              </h1>
+              <button
+                onClick={nextMonth}
+                className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <ChevronRight className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            {/* Legend */}
+            <div className="flex items-center gap-4 text-xs text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block" />
+                Của tôi
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block" />
+                Được mời
+              </span>
+            </div>
           </div>
-          <button className="px-6 py-3 font-semibold text-white transition-all transform rounded-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-600 hover:scale-105">
-            +New Schedule
-          </button>
+
+          {/* Grid */}
+          <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-5">
+            {/* Day headers */}
+            <div className="grid grid-cols-7 mb-3">
+              {DAYS.map((d) => (
+                <div
+                  key={d}
+                  className="text-center text-xs font-semibold text-slate-400 py-2"
+                >
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Date cells */}
+            <div className="grid grid-cols-7 gap-1.5">
+              {/* Offset ô trống */}
+              {Array.from({ length: startOffset }).map((_, i) => (
+                <div key={`empty-${i}`} />
+              ))}
+
+              {/* Các ngày */}
+              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(
+                (day) => {
+                  const meetings = getMeetingsForDay(day);
+                  const hostCount = meetings.filter(
+                    (m) => m.calendarType === "host",
+                  ).length;
+                  const invitedCount = meetings.filter(
+                    (m) => m.calendarType === "invited",
+                  ).length;
+                  const isSelected = selectedDate === day;
+
+                  return (
+                    <div
+                      key={day}
+                      onClick={() =>
+                        setSelectedDate(day === selectedDate ? null : day)
+                      }
+                      className={`
+                      aspect-square flex flex-col items-center justify-start pt-1.5 rounded-xl
+                      border cursor-pointer transition-all text-sm
+                      ${isToday(day) ? "border-purple-500 bg-purple-500/10" : "border-slate-700/30 hover:border-slate-600/50"}
+                      ${isSelected ? "ring-2 ring-purple-400" : ""}
+                    `}
+                    >
+                      <span
+                        className={`font-semibold ${isToday(day) ? "text-purple-300" : "text-white"}`}
+                      >
+                        {day}
+                      </span>
+
+                      {/* Dots */}
+                      {meetings.length > 0 && (
+                        <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
+                          {hostCount > 0 && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                          )}
+                          {invitedCount > 0 && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Badge tổng số */}
+                      {meetings.length > 0 && (
+                        <span className="text-[10px] text-slate-400 mt-0.5">
+                          {meetings.length}
+                        </span>
+                      )}
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Calendar Grid */}
-        <div className="p-6 overflow-hidden border bg-slate-800/30 backdrop-blur border-slate-700/50 rounded-2xl">
-          {/* Day Headers */}
-          <div className="grid grid-cols-7 gap-4 mb-6">
-            {DAYS.map((day) => (
-              <div key={day} className="py-2 text-sm font-semibold text-center text-slate-400">
-                {day}
-              </div>
-            ))}
-          </div>
+        {/* Sidebar — chi tiết ngày được chọn */}
+        <div className="w-72 shrink-0">
+          <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 sticky top-0">
+            <h2 className="text-sm font-semibold text-slate-300 mb-3">
+              {selectedDate
+                ? `${String(selectedDate).padStart(2, "0")} ${MONTHS[currentMonth]}`
+                : "Chọn một ngày"}
+            </h2>
 
-          {/* Calendar Dates */}
-          <div className="grid grid-cols-7 gap-4">
-            {/* Previous month's dates */}
-            {[30].map((date) => (
-              <div key={`prev-${date}`} className="flex items-center justify-center border rounded-lg aspect-square text-slate-600 border-slate-700/30 bg-slate-900/20">
-                <span>{date}</span>
-              </div>
-            ))}
+            {loading && <p className="text-slate-500 text-xs">Đang tải...</p>}
 
-            {/* Current month's dates */}
-            {calendarData.map((event) => (
-              <div
-                key={event.date}
-                className={`aspect-square flex flex-col items-center justify-center rounded-lg border transition-all cursor-pointer group relative ${
-                  event.highlighted
-                    ? 'bg-gradient-to-br from-purple-600/40 to-purple-900/20 border-purple-500/50 shadow-lg shadow-purple-500/20'
-                    : 'border-slate-700/30 hover:border-slate-600/50'
-                }`}
-              >
-                <span className="mb-2 text-lg font-bold text-white">{event.date}</span>
+            {!loading && selectedDate && selectedMeetings.length === 0 && (
+              <p className="text-slate-500 text-xs">Không có cuộc họp nào.</p>
+            )}
 
-                {event.title && (
-                  <div className="text-xs text-center">
-                    <p className="font-semibold text-white">{event.title}</p>
-                    <p className="text-orange-400">{event.price}</p>
+            <div className="flex flex-col gap-2">
+              {selectedMeetings.map((m) => (
+                <div
+                  key={m.id}
+                  className={`p-3 rounded-xl border text-sm ${
+                    m.calendarType === "host"
+                      ? "border-purple-500/30 bg-purple-500/10"
+                      : "border-blue-400/30 bg-blue-400/10"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        m.calendarType === "host"
+                          ? "bg-purple-500"
+                          : "bg-blue-400"
+                      }`}
+                    />
+                    <span className="text-xs text-slate-400">
+                      {m.calendarType === "host" ? "Của tôi" : "Được mời"}
+                    </span>
                   </div>
-                )}
-
-                {event.dots && (
-                  <div className="flex gap-1 mt-1">
-                    {event.dots.map((dot, i) => (
-                      <span key={i} className="text-xs">
-                        {dot}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* Next month's dates */}
-            {[1, 2, 3].map((date) => (
-              <div key={`next-${date}`} className="flex items-center justify-center border rounded-lg aspect-square text-slate-600 border-slate-700/30 bg-slate-900/20">
-                <span>{date}</span>
-              </div>
-            ))}
+                  <p className="font-medium text-white truncate">{m.title}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {new Date(m.scheduledDateTime).toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    {" — "}
+                    {m.duration} phút
+                  </p>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                    {m.roomCode}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
     </div>
-  )
-}
-export default CalendarPage
+  );
+};
+
+export default CalendarPage;
