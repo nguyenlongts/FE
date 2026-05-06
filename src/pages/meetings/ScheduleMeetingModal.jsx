@@ -28,7 +28,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type }) => {
 
   useEffect(() => {
     if (type === "now") {
-      const date = new Date(Date.now());
+      const date = new Date(Date.now() + 30 * 1000);
       setFormData((prev) => ({
         ...prev,
         scheduledDateTime: date.toISOString(),
