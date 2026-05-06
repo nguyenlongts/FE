@@ -81,7 +81,10 @@ const Sidebar=()=> {
           icon={Settings}
           label="Setting"
           active={activeView === 'settings'}
-          onClick={() => setActiveView('settings')}
+          onClick={() => {
+            navigate("/change-password")
+            setActiveView('settings')
+          }}
         />
         
       </nav>

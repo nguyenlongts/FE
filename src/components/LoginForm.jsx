@@ -116,12 +116,13 @@ const LoginForm = () => {
               />
               <span className="text-slate-400">Remember me</span>
             </label>
-            <a
-              href="#"
+            <button
+              type="button"
+              onClick={() => navigate("/forgot-password")}
               className="text-blue-400 transition-colors hover:text-blue-300"
             >
               Forgot Password?
-            </a>
+            </button>
           </div>
 
           {/* Login Error */}
