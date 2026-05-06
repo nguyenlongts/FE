@@ -20,10 +20,6 @@ const parseUtc = (dateStr) => new Date(dateStr + "Z");
 const isSameDay = (d1, d2) =>
   d1.toLocaleDateString() === d2.toLocaleDateString();
 
-/**
- * Giống getMeetingState trong MeetingCard — tính state từ status + time.
- * Trả về: "live" | "waiting" | "upcoming" | "expired"
- */
 const getMeetingState = (meeting) => {
   const { status, scheduledDateTime, duration } = meeting;
   const start = parseUtc(scheduledDateTime);
@@ -37,8 +33,6 @@ const getMeetingState = (meeting) => {
   if (status === "WaitingForHost" || status === 1) return "waiting";
   return "upcoming";
 };
-
-// ─── JoinLinkModal ───────────────────────────────────────────────────────────
 
 const JoinLinkModal = ({ isOpen, onClose, pushRoomCode, handleWaiting }) => {
   const [form] = Form.useForm();
