@@ -163,26 +163,34 @@ export default function MeetingRoom() {
       initialized.current = true;
 
       try {
-        // 1) Fetch JWT từ BE
-        const dataRqJaas={
+        let roomFullName, jaasToken;
+
+        if (isModerator) {
+          // Host: lấy JAAS JWT từ backend
+          const res = await generateJaasToken({
             roomName,
             userName,
-            email:userEmail || "",
-            isModerator,
-            avatarUrl:"",
+            email: userEmail || "",
+            isModerator: true,
+            avatarUrl: "",
             expiresInMinutes: 120,
-          }
-        const res= await generateJaasToken(dataRqJaas).unwrap()
-        console.log(res,"resday");
+          }).unwrap();
+          roomFullName = `${res.appId}/${res.roomName}`;
+          jaasToken = res.token;
+        } else {
+          // Guest / participant: vào thẳng không cần JWT
+          roomFullName = `${import.meta.env.VITE_JAAS_APP_ID}/${roomName}`;
+          jaasToken = null;
+        }
 
-        // 2) Khởi tạo Jitsi
+        // Khởi tạo Jitsi
         apiRef.current = new window.JitsiMeetExternalAPI(JAAS_CONFIG.domain, {
-          roomName:  `${res.appId}/${res.roomName}`,
-          width:     "100%",
-          height:    "100%",
+          roomName:   roomFullName,
+          width:      "100%",
+          height:     "100%",
           parentNode: containerRef.current,
-          jwt:       res.token,
-          userInfo:  { displayName: userName },
+          ...(jaasToken && { jwt: jaasToken }),
+          userInfo:   { displayName: userName },
           configOverwrite: {
             startWithAudioMuted: true,
             startWithVideoMuted: true,
@@ -191,9 +199,9 @@ export default function MeetingRoom() {
             disableDeepLinking:  true,
           },
           interfaceConfigOverwrite: {
-            SHOW_JITSI_WATERMARK:     false,
+            SHOW_JITSI_WATERMARK:      false,
             SHOW_WATERMARK_FOR_GUESTS: false,
-            MOBILE_APP_PROMO:         false,
+            MOBILE_APP_PROMO:          false,
           },
         });
 
