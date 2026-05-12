@@ -93,8 +93,6 @@ const Sidebar=()=> {
       <div className="flex items-center justify-start gap-2 px-4 py-2 mt-auto transition transform border cursor-pointer rounded-xl hover:bg-slate-800 hover:scale-105">
         <LogOut className='text-white'/>
         <button
-          icon={LogOut}
-          active={false}
           onClick={() => dispatch(logout())}
           className="cursor-pointer text-slate-300 hover:text-red-400 hover:bg-red-900/20">
             Log out

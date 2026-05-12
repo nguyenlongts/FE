@@ -3,10 +3,11 @@ import MeetingCard from "../../components/MeetingCard";
 import StatCard from "../../components/StatCard";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../../redux/features/auth/authSlice";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useDeleteMeetingApiMutation,
   useGetAllMeetingByEmailQuery,
+  useGetInvitedMeetingsQuery,
   useJoinMeetingMutation,
   useLazyCheckRoomCodeQuery,
 } from "../../redux/features/meetings/meetingsApi";
@@ -149,7 +150,26 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   const { data: meetingsRaw } = useGetAllMeetingByEmailQuery(user?.email);
-  const meetings = meetingsRaw?.data || [];
+  const { data: invitedRaw } = useGetInvitedMeetingsQuery();
+
+  const meetings = useMemo(() => {
+    const hosted = meetingsRaw?.data || [];
+    const invited = invitedRaw?.data || [];
+    const map = new Map();
+    [...hosted, ...invited].forEach((m) => map.set(m.id, m));
+    return Array.from(map.values());
+  }, [meetingsRaw, invitedRaw]);
+
+  const recentMeetings = useMemo(
+    () =>
+      [...meetings]
+        .sort(
+          (a, b) =>
+            parseUtc(b.scheduledDateTime) - parseUtc(a.scheduledDateTime),
+        )
+        .slice(0, 6),
+    [meetings],
+  );
 
   const now = new Date();
 
@@ -300,8 +320,11 @@ const Dashboard = () => {
         </div>
 
         {/* Meetings Grid */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">Recent Meetings</h2>
+        </div>
         <div className="grid grid-cols-3 gap-6">
-          {meetings.map((meeting) => (
+          {recentMeetings.map((meeting) => (
             <MeetingCard
               key={meeting.id}
               meeting={meeting}
