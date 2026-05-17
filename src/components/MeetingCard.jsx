@@ -12,14 +12,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import InviteModal from "./InviteModal";
-<<<<<<< HEAD
-import { UserPlus } from "lucide-react";
-import ScheduleMeetingModal from "../pages/meetings/ScheduleMeetingModal";
-import DeleteConfirmModal from "./DeleteConfirmModal";
-=======
 import DeleteConfirmModal from "./DeleteConfirmModal";
 
->>>>>>> 5dd6b46a2b89b7f59d59b5ba04089c7468aeb427
 const AVATAR_COLORS = [
   "from-purple-500 to-violet-600",
   "from-orange-400 to-red-500",
