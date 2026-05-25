@@ -41,7 +41,7 @@ const authApi = createApi({
 
     refreshToken: builders.mutation({
       query: (body) => ({
-        url: "/refresh",
+        url: "/Auth/refresh",
         method: "POST",
         body,
       }),

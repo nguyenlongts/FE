@@ -4,6 +4,7 @@ import { Form, Input, Button, ConfigProvider, theme } from "antd";
 import { Video, LogIn, UserPlus, ArrowRight } from "lucide-react";
 import { useCheckRoomCodeQuery, useJoinMeetingMutation, useLazyCheckRoomCodeQuery } from "../../redux/features/meetings/meetingsApi";
 import WaitingRoom from "../meetings/WaitingRoom";
+import toast from "react-hot-toast";
 
 
 export default function Home() {
@@ -22,30 +23,30 @@ export default function Home() {
     setShowWaitingRoom(false);
   };
   const handleJoinMeeting = async ({ roomCode, guestName }) => {
-    setShowWaitingRoom(true)
-    setRoomCode(roomCode);
-    setUserName(guestName)
     try {
       const resCheckRoomCode=await checkRoomCode(roomCode).unwrap()
-      console.log(resCheckRoomCode);
-      if(!resCheckRoomCode?.statusCode===200||!resCheckRoomCode){
-        form.setFields([{ name: "roomCode", errors: "Phòng họp không tồn tại" }]);
+      if (!resCheckRoomCode?.data) {
+        toast.error("Phòng họp không tồn tại");
+        form.setFields([{ name: "roomCode", errors: ["Phòng họp không tồn tại"] }]);
         return;
       }
+      setRoomCode(roomCode);
+      setUserName(guestName)
+      setShowWaitingRoom(true)
       const formJoin={
-        roomCode:roomCode ,userEmail:null, userName:guestName
+        roomCode:roomCode ,userEmail:null, guestName:guestName
       }
-      console.log(formJoin);
+      console.log(formJoin," fj");
       
       const res=await joinMeeting(formJoin).unwrap()
-      console.log(res)
+      console.log(res,"res join can thiet");
       if(error){console.log(error)}
       
       sessionStorage.setItem("guestName", guestName.trim());
       sessionStorage.setItem("joinToken", res?.data?.joinToken);
     } catch(err) {
       console.log(err);
-      
+      toast.error(err?.data?.message || "Không thể kết nối tới server"); 
       form.setFields([{ name: "roomCode", errors: [err?.data?.message||"Không thể kết nối tới server"] }]);
     } finally {
       setIsLoading(false);

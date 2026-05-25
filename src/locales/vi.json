@@ -1,0 +1,120 @@
+{
+  "login": {
+    "welcome": "Chào Mừng Trở Lại",
+    "subtitle": "Đăng nhập vào tài khoản của bạn để tiếp tục",
+    "emailLabel": "Địa chỉ Email",
+    "emailPlaceholder": "Nhập email của bạn",
+    "passwordLabel": "Mật khẩu",
+    "passwordPlaceholder": "Nhập mật khẩu của bạn",
+    "rememberMe": "Ghi nhớ đăng nhập",
+    "forgotPassword": "Quên mật khẩu?",
+    "signIn": "Đăng Nhập",
+    "signingIn": "Đang đăng nhập...",
+    "orContinueWith": "Hoặc tiếp tục với",
+    "noAccount": "Chưa có tài khoản?",
+    "signUp": "Đăng Ký",
+    "toast": {
+      "loginError": "Đã xảy ra lỗi khi đăng nhập, thử lại sau"
+    }
+  },
+  "register": {
+    "title": "Tạo Tài Khoản",
+    "subtitle": "Tham gia cộng đồng TLUHub ngay hôm nay",
+    "fullNameLabel": "Họ và Tên",
+    "fullNamePlaceholder": "Nguyễn Văn A",
+    "emailLabel": "Địa chỉ Email",
+    "emailPlaceholder": "Nhập email của bạn",
+    "passwordLabel": "Mật khẩu",
+    "passwordPlaceholder": "Nhập mật khẩu của bạn",
+    "confirmPasswordLabel": "Xác nhận mật khẩu",
+    "confirmPasswordPlaceholder": "Nhập lại mật khẩu",
+    "passwordStrength": "Độ mạnh mật khẩu",
+    "strength": {
+      "weak": "Yếu",
+      "medium": "Trung bình",
+      "strong": "Mạnh"
+    },
+    "terms": "Tôi đồng ý với",
+    "termsLink": "Điều khoản dịch vụ",
+    "and": "và",
+    "privacyLink": "Chính sách bảo mật",
+    "signUp": "Đăng Ký",
+    "signingUp": "Đang đăng ký...",
+    "orContinueWith": "Hoặc tiếp tục với",
+    "hasAccount": "Đã có tài khoản?",
+    "signIn": "Đăng Nhập",
+    "validation": {
+      "fullNameRequired": "Họ tên không được để trống",
+      "fullNameMin": "Họ tên phải có ít nhất 2 ký tự",
+      "fullNameInvalid": "Họ tên không được chứa số hoặc ký tự đặc biệt",
+      "emailRequired": "Email không được để trống",
+      "emailInvalid": "Email không hợp lệ",
+      "passwordRequired": "Mật khẩu không được để trống",
+      "passwordMin": "Mật khẩu phải có ít nhất 6 ký tự",
+      "confirmPasswordRequired": "Vui lòng xác nhận mật khẩu",
+      "confirmPasswordMismatch": "Mật khẩu xác nhận không khớp"
+    },
+    "toast": {
+      "success": "Đăng ký thành công!",
+      "error": "Có lỗi xảy ra. Vui lòng thử lại sau."
+    }
+  },
+  "dashboard": {
+    "title": "Cuộc họp",
+    "stats": {
+      "numberOfMeetings": "Số cuộc họp",
+      "rescheduled": "Cuộc họp chờ",
+      "cancelled": "Cuộc họp hết hạn",
+      "thisMonth": "Tháng này"
+    },
+    "actions": {
+      "newMeeting": "Cuộc họp mới",
+      "newMeetingSubtext": "Bắt đầu ngay",
+      "joinMeeting": "Tham gia họp",
+      "joinMeetingSubtext": "Qua đường link mời",
+      "scheduleMeeting": "Lên lịch họp",
+      "scheduleMeetingSubtext": "Đặt lịch trước"
+    },
+    "todayTitle": "Bạn có {{count}} cuộc họp hôm nay!",
+    "nextMeeting": "Còn {{hours}} giờ đến cuộc họp tiếp theo"
+  },
+  "joinModal": {
+    "title": "Tham gia phòng họp",
+    "roomCodeLabel": "MÃ PHÒNG HỌP",
+    "roomCodePlaceholder": "VD: MTG-ABC123",
+    "joinButton": "Tham gia ngay",
+    "joiningButton": "Đang kiểm tra...",
+    "validation": {
+      "required": "Vui lòng nhập mã phòng họp",
+      "minLength": "Mã phòng không hợp lệ"
+    },
+    "error": {
+      "notFound": "Phòng họp không tồn tại",
+      "serverError": "Không thể kết nối tới server"
+    }
+  },
+  "calendar": {
+  "days": ["T2", "T3", "T4", "T5", "T6", "T7", "CN"],
+  "months": ["THÁNG 1", "THÁNG 2", "THÁNG 3", "THÁNG 4", "THÁNG 5", "THÁNG 6", "THÁNG 7", "THÁNG 8", "THÁNG 9", "THÁNG 10", "THÁNG 11", "THÁNG 12"],
+  "legend": {
+    "mine": "Của tôi",
+    "invited": "Được mời"
+  },
+  "sidebar": {
+    "selectPrompt": "Chọn một ngày",
+    "loading": "Đang tải...",
+    "noMeetings": "Không có cuộc họp nào.",
+    "mine": "Của tôi",
+    "invited": "Được mời",
+    "duration": "{{duration}} phút"
+  }
+},
+"sidebar": {
+  "home": "Trang chủ",
+  "calendar": "Lịch",
+  "meeting": "Cuộc họp",
+  "profile": "Hồ sơ",
+  "settings": "Cài đặt",
+  "logout": "Đăng xuất"
+}
+}

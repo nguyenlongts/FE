@@ -12,8 +12,12 @@ import {
 import { useRegisterNewUserMutation } from "../../redux/features/auth/authApi";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 function RegisterPage() {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -21,29 +25,21 @@ function RegisterPage() {
     confirmPassword: "",
   });
   const [registerNewUser, { isLoading }] = useRegisterNewUserMutation();
-  const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
-  // const [isLoading, setIsLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     if (name === "password") {
       calculatePasswordStrength(value);
     }
 
     if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
@@ -64,35 +60,39 @@ function RegisterPage() {
   };
 
   const getPasswordStrengthText = () => {
-    if (passwordStrength < 40) return "Yếu";
-    if (passwordStrength < 70) return "Trung bình";
-    return "Mạnh";
+    if (passwordStrength < 40) return t("register.strength.weak");
+    if (passwordStrength < 70) return t("register.strength.medium");
+    return t("register.strength.strong");
   };
 
   const validateForm = () => {
     const newErrors = {};
     if (!formData.fullName.trim()) {
-      newErrors.fullName = "Họ tên không được để trống";
+      newErrors.fullName = t("register.validation.fullNameRequired");
     } else if (formData.fullName.trim().length < 2) {
-      newErrors.fullName = "Họ tên phải có ít nhất 2 ký tự";
+      newErrors.fullName = t("register.validation.fullNameMin");
     } else if (!/^[\p{L}\s]+$/u.test(formData.fullName.trim())) {
-      newErrors.fullName = "Họ tên không được chứa số hoặc ký tự đặc biệt";
+      newErrors.fullName = t("register.validation.fullNameInvalid");
     }
+
     if (!formData.email) {
-      newErrors.email = "Email không được để trống";
+      newErrors.email = t("register.validation.emailRequired");
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email không hợp lệ";
+      newErrors.email = t("register.validation.emailInvalid");
     }
+
     if (!formData.password) {
-      newErrors.password = "Mật khẩu không được để trống";
+      newErrors.password = t("register.validation.passwordRequired");
     } else if (formData.password.length < 6) {
-      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
+      newErrors.password = t("register.validation.passwordMin");
     }
+
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu";
+      newErrors.confirmPassword = t("register.validation.confirmPasswordRequired");
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
+      newErrors.confirmPassword = t("register.validation.confirmPasswordMismatch");
     }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -106,41 +106,63 @@ function RegisterPage() {
         email: formData.email,
         password: formData.password,
       }).unwrap();
-      console.log(response)
-      toast.success("Đăng ký thành công!");
+      console.log(response);
+      toast.success(t("register.toast.success"));
       navigate("/login");
     } catch (error) {
       console.error("Error:", error);
-      toast.error(error?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại sau.");
+      toast.error(error?.data?.message || t("register.toast.error"));
     }
   };
 
   const inputClass = (field) =>
     `w-full py-3 pl-12 pr-4 border rounded-xl tracking-wide text-[#5a5478] placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors ${
-      errors[field] ? "border-red-500/60 bg-red-500/5" : "border-[#2a2245] bg-[#0f0a1e]"
+      errors[field]
+        ? "border-red-500/60 bg-red-500/5"
+        : "border-[#2a2245] bg-[#0f0a1e]"
     }`;
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-[#0b0919] py-8">
       <div className="p-8 bg-[#150f2a] border border-[#2a2245] rounded-lg w-full max-w-md mx-4">
 
+        {/* Language switcher */}
+        <div className="flex justify-end gap-2 mb-4">
+          <button
+            onClick={() => i18n.changeLanguage("vi")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              i18n.language === "vi"
+                ? "bg-purple-600 text-white"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            VI
+          </button>
+          <button
+            onClick={() => i18n.changeLanguage("en")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              i18n.language === "en"
+                ? "bg-purple-600 text-white"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            EN
+          </button>
+        </div>
+
         {/* Header */}
         <div className="mb-8">
-          {/* <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-violet-600 to-purple-500">
-              <Video className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-slate-400 text-sm font-medium tracking-widest uppercase">TLUHub</span>
-          </div> */}
-          <h1 className="mb-2 text-4xl font-bold text-white">Create Account</h1>
-          <p className="text-slate-400">Join the TLUHub community today</p>
+          <h1 className="mb-2 text-4xl font-bold text-white">{t("register.title")}</h1>
+          <p className="text-slate-400">{t("register.subtitle")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
           {/* Full Name */}
           <div>
-            <label className="block mb-2 text-sm font-medium text-white">Full Name</label>
+            <label className="block mb-2 text-sm font-medium text-white">
+              {t("register.fullNameLabel")}
+            </label>
             <div className="relative">
               <User className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
               <input
@@ -148,16 +170,20 @@ function RegisterPage() {
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                placeholder="Nguyen Van A"
+                placeholder={t("register.fullNamePlaceholder")}
                 className={inputClass("fullName")}
               />
             </div>
-            {errors.fullName && <p className="mt-1.5 text-xs text-red-400">{errors.fullName}</p>}
+            {errors.fullName && (
+              <p className="mt-1.5 text-xs text-red-400">{errors.fullName}</p>
+            )}
           </div>
 
           {/* Email */}
           <div>
-            <label className="block mb-2 text-sm font-medium text-white">Email Address</label>
+            <label className="block mb-2 text-sm font-medium text-white">
+              {t("register.emailLabel")}
+            </label>
             <div className="relative">
               <Mail className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
               <input
@@ -165,16 +191,20 @@ function RegisterPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="Enter your email"
+                placeholder={t("register.emailPlaceholder")}
                 className={inputClass("email")}
               />
             </div>
-            {errors.email && <p className="mt-1.5 text-xs text-red-400">{errors.email}</p>}
+            {errors.email && (
+              <p className="mt-1.5 text-xs text-red-400">{errors.email}</p>
+            )}
           </div>
 
           {/* Password */}
           <div>
-            <label className="block mb-2 text-sm font-medium text-white">Password</label>
+            <label className="block mb-2 text-sm font-medium text-white">
+              {t("register.passwordLabel")}
+            </label>
             <div className="relative">
               <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
               <input
@@ -182,7 +212,7 @@ function RegisterPage() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Enter your password"
+                placeholder={t("register.passwordPlaceholder")}
                 className={`${inputClass("password")} pr-12`}
               />
               <button
@@ -196,7 +226,7 @@ function RegisterPage() {
             {formData.password && (
               <div className="mt-2">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-slate-500">Độ mạnh mật khẩu</span>
+                  <span className="text-xs text-slate-500">{t("register.passwordStrength")}</span>
                   <span className="text-xs font-medium" style={{ color: getPasswordStrengthColor() }}>
                     {getPasswordStrengthText()}
                   </span>
@@ -204,17 +234,24 @@ function RegisterPage() {
                 <div className="w-full bg-[#2a2245] rounded-full h-1.5">
                   <div
                     className="h-1.5 rounded-full transition-all duration-300"
-                    style={{ width: `${passwordStrength}%`, backgroundColor: getPasswordStrengthColor() }}
+                    style={{
+                      width: `${passwordStrength}%`,
+                      backgroundColor: getPasswordStrengthColor(),
+                    }}
                   />
                 </div>
               </div>
             )}
-            {errors.password && <p className="mt-1.5 text-xs text-red-400">{errors.password}</p>}
+            {errors.password && (
+              <p className="mt-1.5 text-xs text-red-400">{errors.password}</p>
+            )}
           </div>
 
           {/* Confirm Password */}
           <div>
-            <label className="block mb-2 text-sm font-medium text-white">Confirm Password</label>
+            <label className="block mb-2 text-sm font-medium text-white">
+              {t("register.confirmPasswordLabel")}
+            </label>
             <div className="relative">
               <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
               <input
@@ -222,7 +259,7 @@ function RegisterPage() {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                placeholder="Confirm your password"
+                placeholder={t("register.confirmPasswordPlaceholder")}
                 className={`${inputClass("confirmPassword")} pr-12`}
               />
               <button
@@ -245,13 +282,13 @@ function RegisterPage() {
               className="w-4 h-4 mt-0.5 border rounded cursor-pointer bg-slate-700 border-slate-600 accent-violet-500"
             />
             <span className="text-slate-400">
-              I agree to the{" "}
+              {t("register.terms")}{" "}
               <a href="#" className="text-blue-400 hover:text-blue-300 transition-colors">
-                Terms of Service
+                {t("register.termsLink")}
               </a>{" "}
-              and{" "}
+              {t("register.and")}{" "}
               <a href="#" className="text-blue-400 hover:text-blue-300 transition-colors">
-                Privacy Policy
+                {t("register.privacyLink")}
               </a>
             </span>
           </div>
@@ -268,10 +305,10 @@ function RegisterPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Đang đăng ký...
+                {t("register.signingUp")}
               </span>
             ) : (
-              "Sign Up"
+              t("register.signUp")
             )}
           </button>
 
@@ -281,7 +318,9 @@ function RegisterPage() {
               <div className="w-full border-t border-slate-700/50" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 text-white bg-[#150f2a]">Or continue with</span>
+              <span className="px-2 text-white bg-[#150f2a]">
+                {t("register.orContinueWith")}
+              </span>
             </div>
           </div>
 
@@ -303,12 +342,12 @@ function RegisterPage() {
         </form>
 
         <p className="mt-6 text-center text-slate-400">
-          Already have an account?{" "}
+          {t("register.hasAccount")}{" "}
           <button
             onClick={() => navigate("/login")}
             className="font-semibold text-blue-400 transition-colors hover:text-blue-300"
           >
-            Sign In
+            {t("register.signIn")}
           </button>
         </p>
       </div>

@@ -248,7 +248,7 @@ export default function MeetingsManagement() {
   const [page, setPage] = useState(1)
   const [modal, setModal] = useState(null)
 
-  const {data:meetingsRaw, isLoaing:isMeetingsLoading}=useGetMeetingsQuery();
+  const {data:meetingsRaw, isLoaing:isMeetingsLoading,refetch}=useGetMeetingsQuery();
   const [deleteMeetingApi, {isLoading:isDeleteLoading}]=useDeleteMeetingApiMutation()
   console.log(meetingsRaw, "râ")
 
@@ -335,6 +335,14 @@ export default function MeetingsManagement() {
           style={{ background: 'linear-gradient(135deg,#a855f7,#7c3aed)' }}>
           <Plus size={15} />
           Tạo phòng họp
+        </button>
+        <button
+          onClick={refetch}
+          className="w-10 h-10 flex items-center justify-center rounded-xl border border-[#2a2245] hover:bg-white/5 transition-colors"
+          style={{ color: '#8b7bb5' }}
+          title="Tải lại"
+        >
+          <RefreshCw size={15} />
         </button>
       </div>
 

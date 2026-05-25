@@ -6,7 +6,7 @@ import WaitingRoom from "../pages/meetings/WaitingRoom";
 import Home from "../pages/home/Home";
 import Register from "../pages/login/Register";
 import ProtectedRoute from "./ProtectedRoute";
-import AdminRoute from "./AdminRoute"; // ✅ thêm
+import AdminRoute from "./AdminRoute";
 import MeetingPage from "../pages/meetings/MeetingPage";
 import MeetingRoom from "../pages/meetings/MeetingRoom";
 import Dashboard from "../pages/dashboard/Dashboard";
@@ -17,14 +17,16 @@ import AdminHome from "../pages/admin/AdminHome";
 import UsersManagement from "../pages/admin/UsersManagement";
 import StatsPage from "../pages/admin/stats/StatsPage";
 import MeetingsManagement from "../pages/admin/meetings/MeetingsManagement";
+import SettingsPage from "../pages/settings/SettingsPage";
+import PublicRoute from "./PublicRote";
 
 const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      { path: "/", element: <Home /> },
-      { path: "/login", element: <LoginForm /> },
-      { path: "/register", element: <Register /> },
+      { path: "/", element: <PublicRoute><Home /></PublicRoute> },
+      { path: "/login", element: <PublicRoute><LoginForm /> </PublicRoute>},
+      { path: "/register", element: <PublicRoute><Register /></PublicRoute> },
       { path: "/waiting-room", element: <WaitingRoom /> },
       { path: "/meet/:roomName", element: <MeetingRoom /> },
 
@@ -38,6 +40,7 @@ const router = createBrowserRouter([
               { path: "/calendar", element: <CalendarPage /> },
               { path: "/profile", element: <ProfilePage /> },
               { path: "/meetings", element: <MeetingPage /> },
+              {path: "/settings", element: <SettingsPage/>}
             ],
           },
         ],

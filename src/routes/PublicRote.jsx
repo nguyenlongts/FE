@@ -1,16 +1,11 @@
-// src/router/PublicRoute.jsx
-import { Navigate, Outlet } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { selectRefreshToken } from "../redux/features/auth/authSlice";
+import { Navigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import { selectCurrentUser } from '../redux/features/auth/authSlice'
 
-const PublicRoute = ({ redirectTo = "/dashboard" }) => {
-  const refreshToken = useSelector(selectRefreshToken);
+const PublicRoute = ({ children }) => {
+  const user = useSelector(selectCurrentUser)
+  if (user) return <Navigate to="/dashboard" replace />
+  return children
+}
 
-  if (refreshToken) {
-    return <Navigate to={redirectTo} replace />;
-  }
-
-  return <Outlet />;
-};
-
-export default PublicRoute;
+export default PublicRoute

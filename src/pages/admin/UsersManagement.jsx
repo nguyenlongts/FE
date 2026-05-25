@@ -392,6 +392,7 @@ function ActionMenu({ user, onToggleStatus, onDelete }) {
 
 const initials = name =>
   name.split(" ").slice(-2).map(w => w[0].toUpperCase()).join("")
+
 export default function UsersManagement() {
   const [users,  setUsers]  = useState(SEED_USERS)
   const [search, setSearch] = useState('')

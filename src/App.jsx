@@ -9,7 +9,7 @@ import InvitePopup from "./components/InvitePopup";
 function App() {
   return (
     <>
-      <InvitePopup />
+      {/* <InvitePopup /> */}
       {/* <Toaster position="top-right" reverseOrder={false} /> */}
       <div className="flex w-full h-screen">
         <Sidebar />

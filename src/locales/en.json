@@ -1,0 +1,120 @@
+{
+  "login": {
+    "welcome": "Welcome Back",
+    "subtitle": "Sign in to your account to continue",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "Enter your email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot Password?",
+    "signIn": "Sign In",
+    "signingIn": "Signing In...",
+    "orContinueWith": "Or continue with",
+    "noAccount": "Don't have an account?",
+    "signUp": "Sign Up",
+    "toast": {
+      "loginError": "An error occurred while logging in, please try again"
+    }
+  },
+  "register": {
+    "title": "Create Account",
+    "subtitle": "Join the TLUHub community today",
+    "fullNameLabel": "Full Name",
+    "fullNamePlaceholder": "Nguyen Van A",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "Enter your email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "passwordStrength": "Password strength",
+    "strength": {
+      "weak": "Weak",
+      "medium": "Medium",
+      "strong": "Strong"
+    },
+    "terms": "I agree to the",
+    "termsLink": "Terms of Service",
+    "and": "and",
+    "privacyLink": "Privacy Policy",
+    "signUp": "Sign Up",
+    "signingUp": "Signing up...",
+    "orContinueWith": "Or continue with",
+    "hasAccount": "Already have an account?",
+    "signIn": "Sign In",
+    "validation": {
+      "fullNameRequired": "Full name is required",
+      "fullNameMin": "Full name must be at least 2 characters",
+      "fullNameInvalid": "Full name must not contain numbers or special characters",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email address",
+      "passwordRequired": "Password is required",
+      "passwordMin": "Password must be at least 6 characters",
+      "confirmPasswordRequired": "Please confirm your password",
+      "confirmPasswordMismatch": "Passwords do not match"
+    },
+    "toast": {
+      "success": "Registration successful!",
+      "error": "Something went wrong. Please try again."
+    }
+  },
+  "dashboard": {
+    "title": "Meetings",
+    "stats": {
+      "numberOfMeetings": "Number of meetings",
+      "rescheduled": "Rescheduled meetings",
+      "cancelled": "Cancel meetings",
+      "thisMonth": "This month"
+    },
+    "actions": {
+      "newMeeting": "New Meeting",
+      "newMeetingSubtext": "Start New Meeting",
+      "joinMeeting": "Join Meeting",
+      "joinMeetingSubtext": "Via Invitation Link",
+      "scheduleMeeting": "Schedule Meeting",
+      "scheduleMeetingSubtext": "Plan Your Meeting"
+    },
+    "todayTitle": "You have {{count}} meetings today!",
+    "nextMeeting": "{{hours}} hours left for the next meeting"
+  },
+  "joinModal": {
+    "title": "Join a Meeting",
+    "roomCodeLabel": "ROOM CODE",
+    "roomCodePlaceholder": "e.g. MTG-ABC123",
+    "joinButton": "Join Now",
+    "joiningButton": "Checking...",
+    "validation": {
+      "required": "Please enter a room code",
+      "minLength": "Invalid room code"
+    },
+    "error": {
+      "notFound": "Meeting room does not exist",
+      "serverError": "Cannot connect to server"
+    }
+  },
+  "calendar": {
+    "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "months": ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"],
+    "legend": {
+        "mine": "My meetings",
+        "invited": "Invited"
+    },
+    "sidebar": {
+        "selectPrompt": "Select a date",
+        "loading": "Loading...",
+        "noMeetings": "No meetings.",
+        "mine": "Mine",
+        "invited": "Invited",
+        "duration": "{{duration}} mins"
+    }
+    },
+    "sidebar": {
+  "home": "Home",
+  "calendar": "Calendar",
+  "meeting": "Meeting",
+  "profile": "Profile",
+  "settings": "Settings",
+  "logout": "Log out"
+}
+}
