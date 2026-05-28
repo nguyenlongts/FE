@@ -1,34 +1,26 @@
 import { useState } from "react"
-import { Users, Video, BarChart2, Activity, RefreshCw, ChevronRight } from "lucide-react"
+import { Users, Video, BarChart2, Activity, RefreshCw, ChevronRight, User } from "lucide-react"
 import { useGetMeetingsQuery, useGetStatsQuery, useGetUsersQuery } from "../../../redux/features/admin/adminApi"
 import { useSelector } from "react-redux"
+import { useTranslation } from "react-i18next"
 
 /* ─── helpers ─────────────────────────────────────────────── */
-const timeAgo = date => {
-  const s = Math.floor((Date.now() - new Date(date)) / 1000)
-  if (s < 60) return `${s} giây trước`
-  if (s < 3600) return `${Math.floor(s / 60)} phút trước`
-  if (s < 86400) return `${Math.floor(s / 3600)} giờ trước`
-  return `${Math.floor(s / 86400)} ngày trước`
+const useTimeAgo = () => {
+  const { t } = useTranslation()
+  return date => {
+    const s = Math.floor((Date.now() - new Date(date)) / 1000)
+    if (s < 60) return t('admin.stats.timeAgo.seconds', { count: s })
+    if (s < 3600) return t('admin.stats.timeAgo.minutes', { count: Math.floor(s / 60) })
+    if (s < 86400) return t('admin.stats.timeAgo.hours', { count: Math.floor(s / 3600) })
+    return t('admin.stats.timeAgo.days', { count: Math.floor(s / 86400) })
+  }
 }
 
-const initials = name =>
-  name.split(" ").slice(-2).map(w => w[0].toUpperCase()).join("")
-
-const avatarPalette = [
-  { bg: "bg-violet-500/20", color: "text-violet-400" },
-  { bg: "bg-pink-500/20",   color: "text-pink-400"   },
-  { bg: "bg-blue-500/20",   color: "text-blue-400"   },
-  { bg: "bg-emerald-500/20",color: "text-emerald-400" },
-  { bg: "bg-amber-500/20",  color: "text-amber-400"  },
-]
-const avatarColor = str => avatarPalette[str.charCodeAt(0) % avatarPalette.length]
-
-const statusMap = {
-  started: { label: "Live",        dot: "bg-green-400",  badge: "bg-green-500/15 text-green-300"  },
-  created: { label: "Chờ",         dot: "bg-amber-400",  badge: "bg-amber-500/15 text-amber-300"  },
-  ended:   { label: "Đã kết thúc", dot: "bg-slate-500",  badge: "bg-slate-500/15 text-slate-400"  },
-  deleted: { label: "Đã xóa",      dot: "bg-red-400",    badge: "bg-red-500/15 text-red-300"      },
+const statusStyleMap = {
+  started: { dot: "bg-green-400",  badge: "bg-green-500/15 text-green-300"  },
+  created: { dot: "bg-amber-400",  badge: "bg-amber-500/15 text-amber-300"  },
+  ended:   { dot: "bg-slate-500",  badge: "bg-slate-500/15 text-slate-400"  },
+  deleted: { dot: "bg-red-400",    badge: "bg-red-500/15 text-red-300"      },
 }
 
 
@@ -64,16 +56,21 @@ const StatCard = ({ icon: Icon, label, value, sub, gradientIdx, loading }) => (
 )
 
 
-const ErrorState = ({ message }) => (
-  <div className="flex flex-col items-center justify-center py-16 gap-3">
-    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
-      <span className="text-red-400 text-xl">!</span>
+const ErrorState = ({ message }) => {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col items-center justify-center py-16 gap-3">
+      <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+        <span className="text-red-400 text-xl">!</span>
+      </div>
+      <p className="text-slate-400 text-sm">{message || t('admin.stats.errorGeneric')}</p>
     </div>
-    <p className="text-slate-400 text-sm">{message || "Đã xảy ra lỗi khi tải dữ liệu"}</p>
-  </div>
-)
+  )
+}
 
 export default function StatsPage() {
+  const { t } = useTranslation()
+  const timeAgo = useTimeAgo()
   const [tab, setTab] = useState("users")
 
   const {
@@ -122,8 +119,8 @@ export default function StatsPage() {
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <p className="text-[10px] font-semibold tracking-[3px] text-violet-500 mb-1.5 uppercase">TLUMeet</p>
-            <h1 className="text-2xl font-bold tracking-tight m-0">Tổng quan hệ thống</h1>
+            <p className="text-[10px] font-semibold tracking-[3px] text-violet-500 mb-1.5 uppercase">{t('admin.stats.tag')}</p>
+            <h1 className="text-2xl font-bold tracking-tight m-0">{t('admin.stats.title')}</h1>
           </div>
           <button
             onClick={refetchAll}
@@ -136,32 +133,32 @@ export default function StatsPage() {
               size={14}
               className={isSpinning ? "animate-spin" : ""}
             />
-            {isSpinning ? "Đang tải..." : "Làm mới"}
+            {isSpinning ? t('admin.stats.loading') : t('admin.stats.refresh')}
           </button>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
           <StatCard
-            icon={Users} label="Tổng người dùng"
+            icon={Users} label={t('admin.stats.cards.totalUsers')}
             value={stats?.totalUsers?.toLocaleString() ?? "—"}
             gradientIdx={0} loading={isStatsLoading}
           />
           <StatCard
-            icon={Video} label="Tổng phòng họp"
+            icon={Video} label={t('admin.stats.cards.totalMeetings')}
             value={stats?.totalMeetings?.toLocaleString() ?? "—"}
-            sub="tất cả thời gian"
+            sub={t('admin.stats.cards.totalMeetingsSub')}
             gradientIdx={1} loading={isStatsLoading}
           />
           <StatCard
-            icon={Activity} label="Đang họp live"
+            icon={Activity} label={t('admin.stats.cards.liveMeetings')}
             value={stats?.activeMeetings ?? "—"}
-            sub="● phòng đang hoạt động"
+            sub={t('admin.stats.cards.liveMeetingsSub')}
             gradientIdx={2} loading={isStatsLoading}
           />
           <StatCard
-            icon={BarChart2} label="Tỷ lệ hoạt động"
+            icon={BarChart2} label={t('admin.stats.cards.activeRate')}
             value={isStatsLoading ? "—" : activeRate}
-            sub="phòng live / tổng phòng"
+            sub={t('admin.stats.cards.activeRateSub')}
             gradientIdx={3} loading={isStatsLoading}
           />
         </div>
@@ -173,8 +170,8 @@ export default function StatsPage() {
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06]">
             <div className="flex gap-1">
               {[
-                { key: "users",    label: "Người dùng", count: users.length    },
-                { key: "meetings", label: "Phòng họp",  count: meetings.length },
+                { key: "users",    label: t('admin.stats.tabs.users'),    count: users.length    },
+                { key: "meetings", label: t('admin.stats.tabs.meetings'), count: meetings.length },
               ].map(({ key, label, count }) => (
                 <button
                   key={key}
@@ -198,14 +195,14 @@ export default function StatsPage() {
 
           {tab === "users" && (
             isUsersError
-              ? <ErrorState message="Không thể tải danh sách người dùng" />
+              ? <ErrorState message={t('admin.stats.usersTable.errorLoad')} />
               : (
                 <table className="w-full border-collapse text-[13px]">
                   <thead>
                     <tr>
-                      <th className={thCls}>Người dùng</th>
-                      <th className={thCls}>Email</th>
-                      <th className={thCls}>Đăng ký</th>
+                      <th className={thCls}>{t('admin.stats.usersTable.user')}</th>
+                      <th className={thCls}>{t('admin.stats.usersTable.email')}</th>
+                      <th className={thCls}>{t('admin.stats.usersTable.registered')}</th>
                       <th className={thCls}></th>
                     </tr>
                   </thead>
@@ -221,7 +218,6 @@ export default function StatsPage() {
                         </tr>
                       ))
                       : users?.map(u => {
-                        const av = avatarColor(u.userName)
                         return (
                           <tr
                             key={u.userId}
@@ -229,9 +225,13 @@ export default function StatsPage() {
                           >
                             <td className="px-5 py-3.5">
                               <div className="flex items-center gap-2.5">
-                                <div className={`w-8 h-8 rounded-full ${av.bg} ${av.color} flex items-center justify-center text-[11px] font-bold flex-shrink-0`}>
-                                  {initials(u.userName)}
-                                </div>
+                                {u.avatarUrl ? (
+                                  <img src={u.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                                    <User size={14} className="text-slate-500" />
+                                  </div>
+                                )}
                                 <span className="font-medium text-slate-200">{u.userName}</span>
                               </div>
                             </td>
@@ -253,15 +253,15 @@ export default function StatsPage() {
 
           {tab === "meetings" && (
             isMeetingsError
-              ? <ErrorState message="Không thể tải danh sách phòng họp" />
+              ? <ErrorState message={t('admin.stats.meetingsTable.errorLoad')} />
               : (
                 <table className="w-full border-collapse text-[13px]">
                   <thead>
                     <tr>
-                      <th className={thCls}>Phòng họp</th>
-                      <th className={thCls}>Mã phòng</th>
-                      <th className={thCls}>Số người</th>
-                      <th className={thCls}>Trạng thái</th>
+                      <th className={thCls}>{t('admin.stats.meetingsTable.meeting')}</th>
+                      <th className={thCls}>{t('admin.stats.meetingsTable.roomCode')}</th>
+                      <th className={thCls}>{t('admin.stats.meetingsTable.participants')}</th>
+                      <th className={thCls}>{t('admin.stats.meetingsTable.status')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -276,7 +276,8 @@ export default function StatsPage() {
                         </tr>
                       ))
                       : meetings.map(m => {
-                        const st = statusMap[m.status] || statusMap.ended
+                        const st = statusStyleMap[m.status] || statusStyleMap.ended
+                        const statusLabel = t(`admin.stats.meetingStatus.${m.status}`, { defaultValue: m.status })
                         return (
                           <tr
                             key={m.meetingId}
@@ -288,11 +289,13 @@ export default function StatsPage() {
                                 {m.roomCode}
                               </code>
                             </td>
-                            <td className="px-5 py-3.5 text-slate-500">{m.totalParticipants} người</td>
+                            <td className="px-5 py-3.5 text-slate-500">
+                              {t('admin.stats.meetingsTable.participantsCount', { count: m.totalParticipants })}
+                            </td>
                             <td className="px-5 py-3.5">
                               <span className={`inline-flex items-center gap-1.5 ${st.badge} px-3 py-1 rounded-full text-[12px] font-medium`}>
                                 <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
-                                {st.label}
+                                {statusLabel}
                               </span>
                             </td>
                           </tr>

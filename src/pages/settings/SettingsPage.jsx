@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Bell, Video, Mic, Globe, Moon, Shield, ChevronRight } from 'lucide-react'
+import { Bell, Video, Mic, Globe, Moon, Shield, ChevronRight, KeyRound } from 'lucide-react'
 import {
   US,
   VN,
@@ -103,6 +104,7 @@ const SettingRow = ({ label, desc, checked, onChange }) => (
 // ─── Settings ────────────────────────────────────────────────────────────────
 const SettingsPage = () => {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const [selectedLang, setSelectedLang] = useState(i18n.language?.slice(0, 2) || 'en')
   const [saved, setSaved] = useState(false)
 
@@ -271,6 +273,30 @@ const SettingsPage = () => {
             checked={appearance.darkMode}
             onChange={(v) => setAppearance((p) => ({ ...p, darkMode: v }))}
           />
+        </Section>
+
+        {/* Security */}
+        <Section icon={Shield} title={t('settingsSecurity.sectionTitle')}>
+          <button
+            onClick={() => navigate('/change-password')}
+            className="flex items-center justify-between w-full py-3 border-b border-white/5 last:border-0 text-left hover:bg-white/[0.02] -mx-2 px-2 rounded-lg transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center"
+                style={{ background: 'rgba(168,85,247,.15)' }}>
+                <KeyRound size={15} className="text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-200">
+                  {t('settingsSecurity.changePassword')}
+                </p>
+                <p className="text-xs text-[#5a5478] mt-0.5">
+                  {t('settingsSecurity.changePasswordDesc')}
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-slate-500" />
+          </button>
         </Section>
 
         {/* Save */}

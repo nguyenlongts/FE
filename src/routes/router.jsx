@@ -17,7 +17,11 @@ import AdminHome from "../pages/admin/AdminHome";
 import UsersManagement from "../pages/admin/UsersManagement";
 import StatsPage from "../pages/admin/stats/StatsPage";
 import MeetingsManagement from "../pages/admin/meetings/MeetingsManagement";
+import AdminSettingsPage from "../pages/admin/AdminSettingsPage";
 import SettingsPage from "../pages/settings/SettingsPage";
+import ForgotPasswordPage from "../components/ForgotPasswordPage";
+import ResetPasswordPage from "../pages/login/ResetPasswordPage";
+import ChangePasswordPage from "../pages/login/ChangePasswordPage";
 import PublicRoute from "./PublicRote";
 
 const router = createBrowserRouter([
@@ -27,12 +31,15 @@ const router = createBrowserRouter([
       { path: "/", element: <PublicRoute><Home /></PublicRoute> },
       { path: "/login", element: <PublicRoute><LoginForm /> </PublicRoute>},
       { path: "/register", element: <PublicRoute><Register /></PublicRoute> },
+      { path: "/forgot-password", element: <PublicRoute><ForgotPasswordPage /></PublicRoute> },
+      { path: "/reset-password", element: <PublicRoute><ResetPasswordPage /></PublicRoute> },
       { path: "/waiting-room", element: <WaitingRoom /> },
       { path: "/meet/:roomName", element: <MeetingRoom /> },
 
       {
         element: <ProtectedRoute />,
         children: [
+          { path: "/change-password", element: <ChangePasswordPage /> },
           {
             element: <App />,
             children: [
@@ -58,7 +65,8 @@ const router = createBrowserRouter([
         children: [
           { path: "/admin", element: <StatsPage /> },
           { path: "/admin/users", element: <UsersManagement /> },
-          { path: "/admin/meetings", element: <MeetingsManagement/>}
+          { path: "/admin/meetings", element: <MeetingsManagement/>},
+          { path: "/admin/settings", element: <AdminSettingsPage /> }
         ],
       },
     ],

@@ -11,6 +11,7 @@ import WaitingRoom from '../meetings/WaitingRoom'
 import { useNavigate } from 'react-router-dom'
 import DeleteConfirmModal from '../../components/DeleteConfirmModal'
 import { useTranslation } from 'react-i18next'
+import Loading from '../../components/Loading'
 
 // ─── JoinLinkModal ────────────────────────────────────────────────────────────
 const JoinLinkModal = ({ isOpen, onClose, pushRoomCode, handleWaiting }) => {
@@ -138,7 +139,7 @@ const Dashboard = () => {
   const navigate = useNavigate()
   const user = useSelector(selectCurrentUser)
   const [type, setType] = useState('')
-  const { data: meetingsRaw } = useGetAllMeetingByEmailQuery(user?.email)
+  const { data: meetingsRaw, isLoading: isMeetingsLoading } = useGetAllMeetingByEmailQuery(user?.email, { skip: !user?.email })
   const meetings = meetingsRaw?.data || []
   console.log(meetings, 'meetings')
 
@@ -165,6 +166,9 @@ const Dashboard = () => {
     setIsWaitingRoomOpen(false)
     navigate(`/meet/${roomCode}`)
   }
+
+  if (isMeetingsLoading) return <Loading text={t('dashboard.loading')} />
+
   return (
     <div className="flex-1 overflow-auto">
       <div className="p-8 mx-auto max-w-7xl">

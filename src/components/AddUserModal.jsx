@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Eye, EyeOff, Copy, Check } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import ModalShell from './ModalShell'
 const genPassword = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%'
@@ -12,12 +13,13 @@ const fieldCls = (err) =>
    ${err ? 'border-red-500/50 focus:border-red-400' : 'border-[#2a2245] focus:border-violet-500/60'}`
 
 function ModalActions({ onClose, onSubmit, loading, submitLabel }) {
+  const { t } = useTranslation()
   return (
     <div className="flex gap-3 mt-6">
       <button onClick={onClose}
         className="flex-1 py-2.5 rounded-xl text-sm border border-[#2a2245] hover:bg-white/5 transition-colors"
         style={{ color: '#8b7bb5' }}>
-        Hủy
+        {t('admin.users.addModal.cancel')}
       </button>
       <button onClick={onSubmit} disabled={loading}
         className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-60"
@@ -40,6 +42,7 @@ function Field({ label, error, children }) {
 }
 
 const AddUserModal = ({ onClose, onAdd }) => {
+  const { t } = useTranslation()
   const [form, setForm] = useState({ name: '', email: '', role: 'User' })
   const [password]      = useState(genPassword)
   const [showPw, setShowPw]   = useState(false)
@@ -51,8 +54,8 @@ const AddUserModal = ({ onClose, onAdd }) => {
 
   const validate = () => {
     const e = {}
-    if (!form.name.trim())                         e.name  = 'Họ tên không được để trống'
-    if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Email không hợp lệ'
+    if (!form.name.trim())                         e.name  = t('admin.users.addModal.nameRequired')
+    if (!form.email || !/\S+@\S+\.\S+/.test(form.email)) e.email = t('admin.users.addModal.emailInvalid')
     setErrors(e)
     return !Object.keys(e).length
   }
@@ -70,45 +73,36 @@ const AddUserModal = ({ onClose, onAdd }) => {
       // await api.createUser({ ...form, password })
       await new Promise(r => setTimeout(r, 800))
       onAdd({ id: Date.now(), ...form, status: 'active', createdAt: new Date().toISOString().slice(0,10) })
-      toast.success(`Đã tạo tài khoản cho ${form.name}`)
+      toast.success(t('admin.users.addModal.createSuccess', { name: form.name }))
       onClose()
     } catch {
-      toast.error('Có lỗi xảy ra')
+      toast.error(t('admin.users.addModal.createError'))
     } finally { setLoading(false) }
   }
 
   return (
-    <ModalShell title="Thêm người dùng" icon={<Plus size={16} />} onClose={onClose}>
+    <ModalShell title={t('admin.users.addModal.title')} icon={<Plus size={16} />} onClose={onClose}>
       <div className="space-y-4">
 
-        <Field label="Họ và tên" error={errors.name}>
+        <Field label={t('admin.users.addModal.nameLabel')} error={errors.name}>
           <input
             value={form.name} onChange={e => set('name', e.target.value)}
-            placeholder="Nguyễn Văn A"
+            placeholder={t('admin.users.addModal.namePlaceholder')}
             className={fieldCls(errors.name)}
           />
         </Field>
 
         {/* Email */}
-        <Field label="Email" error={errors.email}>
+        <Field label={t('admin.users.addModal.emailLabel')} error={errors.email}>
           <input
             type="email" value={form.email} onChange={e => set('email', e.target.value)}
-            placeholder="example@tluhub.vn"
+            placeholder={t('admin.users.addModal.emailPlaceholder')}
             className={fieldCls(errors.email)}
           />
         </Field>
 
-        {/* Role */}
-        {/* <Field label="Vai trò">
-          <select value={form.role} onChange={e => set('role', e.target.value)} className={fieldCls()}>
-            <option value="User">User</option>
-            <option value="Manager">Manager</option>
-            <option value="Admin">Admin</option>
-          </select>
-        </Field> */}
-
         {/* Auto password */}
-        <Field label="Mật khẩu (tự động)">
+        <Field label={t('admin.users.addModal.passwordLabel')}>
           <div className="relative">
             <input
               readOnly value={password} type={showPw ? 'text' : 'password'}
@@ -128,12 +122,12 @@ const AddUserModal = ({ onClose, onAdd }) => {
             </div>
           </div>
           <p className="text-[11px] mt-1" style={{ color: '#5a4d7a' }}>
-            Gửi mật khẩu này cho người dùng sau khi tạo.
+            {t('admin.users.addModal.passwordHint')}
           </p>
         </Field>
       </div>
 
-      <ModalActions onClose={onClose} onSubmit={handleSubmit} loading={loading} submitLabel="Tạo tài khoản" />
+      <ModalActions onClose={onClose} onSubmit={handleSubmit} loading={loading} submitLabel={t('admin.users.addModal.submit')} />
     </ModalShell>
   )
 }

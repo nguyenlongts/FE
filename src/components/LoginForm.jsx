@@ -25,8 +25,12 @@ const LoginForm = () => {
     try {
       const res = await loginUser({ email, password }).unwrap()
 
-      // Decode JWT để lấy role
+      // Decode JWT để lấy roles (backend trả về mảng `roles`, vd ["super_admin"])
       const payload = JSON.parse(atob(res.data.token.split('.')[1]))
+      const roles = (payload.roles ?? [payload.role ?? payload.Role])
+        .filter(Boolean)
+        .map((r) => r.toString().trim().toLowerCase())
+      const isAdmin = roles.some((r) => r.includes('admin'))
 
       dispatch(
         setCredentials({
@@ -34,7 +38,7 @@ const LoginForm = () => {
             id: res.data.id,
             email: res.data.email,
             name: res.data.name,
-            role: payload.role,
+            roles,
           },
           accessToken: res.data.token,
           refreshToken: res.data.refreshToken,
@@ -42,7 +46,7 @@ const LoginForm = () => {
       )
 
       toast.success(res.message)
-      navigate(payload?.role?.toLowerCase() === 'admin' ? '/admin' : from, { replace: true })
+      navigate(isAdmin ? '/admin' : from, { replace: true })
     } catch (error) {
       const message =
         error?.data?.message ||
@@ -137,9 +141,13 @@ const LoginForm = () => {
               />
               <span className="text-slate-400">{t('login.rememberMe')}</span>
             </label>
-            <a href="#" className="text-blue-400 transition-colors hover:text-blue-300">
+            <button
+              type="button"
+              onClick={() => navigate('/forgot-password')}
+              className="text-blue-400 transition-colors hover:text-blue-300 cursor-pointer"
+            >
               {t('login.forgotPassword')}
-            </a>
+            </button>
           </div>
 
           {/* Submit button */}

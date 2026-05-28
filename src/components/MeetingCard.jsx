@@ -212,6 +212,7 @@ import InviteModal from "./InviteModal";
 import { UserPlus } from "lucide-react";
 import ScheduleMeetingModal from "../pages/meetings/ScheduleMeetingModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import { useTranslation } from "react-i18next";
 
 const AVATAR_COLORS = [
   "from-purple-500 to-violet-600",
@@ -235,6 +236,7 @@ const formatTime = (dt) => {
 };
 
 const MeetingCard = ({ meeting, onDelete }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
   const [isEdit, setIsEdit] = useState(false);
@@ -304,7 +306,7 @@ const MeetingCard = ({ meeting, onDelete }) => {
           </div>
           <div className="flex items-center gap-2 text-white/40 text-xs">
             <Clock size={12} className="text-cyan-400" />
-            <span>{meeting.duration} minutes</span>
+            <span>{t('meetingCard.minutes', { count: meeting.duration })}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/50 tracking-widest">
@@ -324,12 +326,12 @@ const MeetingCard = ({ meeting, onDelete }) => {
           className="flex-1 py-2 rounded-lg text-xs font-medium text-white flex items-center justify-center gap-1.5"
           style={{ background: "linear-gradient(135deg, #a855f7, #7c3aed)" }}
         >
-          <Video size={13} /> Join Now
+          <Video size={13} /> {t('meetingCard.joinNow')}
         </button>
         <button
           onClick={() => setInviteOpen(true)}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-purple-400 hover:bg-purple-500/10 transition-colors border border-white/8"
-          title="Invite people"
+          title={t('meetingCard.invitePeople')}
         >
           <UserPlus size={13} />
         </button>

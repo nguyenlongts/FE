@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Clock, AlertCircle, X } from "lucide-react";
 import { useLazyGetStatusMeetingQuery } from "../../redux/features/meetings/meetingsApi";
+import { useTranslation } from "react-i18next";
 
 const API_BASE = `http://localhost:5555/api/meeting`
 
 function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
+  const { t } = useTranslation();
   const [waitingTime, setWaitingTime] = useState(0);
   const hasJoined = useRef(false);
 
@@ -74,9 +76,9 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
           </div>
 
           <div className="text-center">
-            <p className="text-white font-semibold text-lg">Đang chờ host...</p>
+            <p className="text-white font-semibold text-lg">{t('waitingRoom.title')}</p>
             <p className="text-white/70 text-sm mt-1">
-              Cuộc họp sẽ bắt đầu khi host tham gia
+              {t('waitingRoom.subtitle')}
             </p>
           </div>
         </div>
@@ -89,7 +91,7 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
             style={{ background: "rgba(168,85,247,0.08)" }}
           >
             <p className="text-xs uppercase tracking-wider text-purple-400">
-              Thời gian chờ
+              {t('waitingRoom.waitTime')}
             </p>
             <p
               className="text-4xl font-bold tabular-nums"
@@ -105,7 +107,7 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
               className="flex items-center justify-between rounded-lg px-4 py-3 border border-white/10"
               style={{ background: "rgba(255,255,255,0.05)" }}
             >
-              <span className="text-sm text-white/50">Mã phòng</span>
+              <span className="text-sm text-white/50">{t('waitingRoom.roomCode')}</span>
               <code className="text-sm font-mono font-bold text-purple-400">
                 {roomCode}
               </code>
@@ -114,7 +116,7 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
               className="flex items-center justify-between rounded-lg px-4 py-3 border border-white/10"
               style={{ background: "rgba(255,255,255,0.05)" }}
             >
-              <span className="text-sm text-white/50">Tên của bạn</span>
+              <span className="text-sm text-white/50">{t('waitingRoom.yourName')}</span>
               <span className="text-sm font-medium text-white">{userName}</span>
             </div>
           </div>
@@ -126,8 +128,7 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
           >
             <AlertCircle size={16} className="text-purple-400 mt-0.5 shrink-0" />
             <p className="text-sm text-white/60 leading-relaxed">
-              Bạn sẽ tự động vào phòng khi host bắt đầu cuộc họp. Vui lòng
-              không tắt trang này.
+              {t('waitingRoom.notice')}
             </p>
           </div>
 
@@ -136,7 +137,7 @@ function WaitingRoom({ roomCode, userName, onHostJoined, onCancel }) {
             onClick={onCancel}
             className="w-full py-3 rounded-lg text-sm text-white/70 border border-white/15 hover:border-white/30 hover:text-white transition-colors"
           >
-            Rời khỏi phòng chờ
+            {t('waitingRoom.leave')}
           </button>
         </div>
       </div>

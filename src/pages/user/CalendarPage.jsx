@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMeetingCalendar } from "../../hooks/useMeetingCalendar";
+import Loading from "../../components/Loading";
 
 function buildCalendarDays(year, month) {
   const firstDay = new Date(year, month, 1).getDay();
@@ -49,6 +50,8 @@ const CalendarPage = () => {
     currentYear === today.getFullYear();
 
   const selectedMeetings = selectedDate ? getMeetingsForDay(selectedDate) : [];
+
+  if (loading) return <Loading text={t("calendar.loading")} />;
 
   return (
     <div className="flex-1 overflow-auto">

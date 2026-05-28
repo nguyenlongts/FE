@@ -2,6 +2,8 @@ import { Home, Calendar, Video, Settings, LogOut, CirclePlus, User } from 'lucid
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useDispatch } from 'react-redux'
+import authApi, { useLogoutUserMutation } from '../../redux/features/auth/authApi'
 
 const NavItem = ({ icon: Icon, label, active, onClick, className = '' }) => {
   return (
@@ -24,9 +26,18 @@ const Sidebar = () => {
   const { t } = useTranslation()
   const [activeView, setActiveView] = useState('home')
   const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const [logoutUser] = useLogoutUserMutation()
 
-  const handleLogout = () => {
-    localStorage.removeItem('refreshToken')
+  const handleLogout = async () => {
+    try {
+      await logoutUser().unwrap()
+    } catch {
+      // server lỗi thì vẫn clear ở client
+    }
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    dispatch(authApi.util.resetApiState())
     navigate('/login')
   }
 
@@ -70,11 +81,11 @@ const Sidebar = () => {
       </nav>
 
       <div className="flex items-center justify-start gap-2 px-4 py-2 mt-auto transition transform border cursor-pointer rounded-xl hover:bg-slate-800 hover:scale-105">
-        <LogOut className="text-white" />
         <button
           onClick={handleLogout}
-          className="cursor-pointer text-slate-300 hover:text-red-400 hover:bg-red-900/20"
+          className="cursor-pointer flex items-center justify-center gap-2 text-slate-300"
         >
+          <LogOut className="text-white" />
           {t('sidebar.logout')}
         </button>
       </div>

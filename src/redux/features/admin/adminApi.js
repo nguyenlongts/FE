@@ -36,6 +36,14 @@ const adminApi = createApi({
       }),
       invalidatesTags: ["UsersAdmin","Stats"],
     }),
+    importUsers: builders.mutation({
+      query: (users) => ({
+        url: `/users/import`,
+        method: "POST",
+        body: { users },
+      }),
+      invalidatesTags: ["UsersAdmin", "Stats"],
+    }),
     getMeetings: builders.query({
       query: () => ({
         url: `/meetings`,
@@ -50,6 +58,7 @@ export const {
   useGetStatsQuery,
   useGetMeetingsQuery,
   useGetUsersQuery,
-  useDeleteUserMutation
+  useDeleteUserMutation,
+  useImportUsersMutation,
 } = adminApi;
 export default adminApi;

@@ -8,8 +8,14 @@ import {
   XCircle, AlertCircle, Play, Square,
 } from 'lucide-react'
 import { useGetMeetingsQuery } from '../../../redux/features/admin/adminApi'
-import { useDeleteMeetingApiMutation } from '../../../redux/features/meetings/meetingsApi'
+import {
+  useDeleteMeetingApiMutation,
+  useScheduleMeetingMutation,
+  useStartMeetingMutation,
+  useEndMeetingMutation,
+} from '../../../redux/features/meetings/meetingsApi'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import Loading from '../../../components/Loading'
 
 // ─── Mock Data ───────────────────────────────────────────────────────────────
@@ -29,10 +35,10 @@ const PAGE_SIZE = 8
 
 // ─── Style maps ──────────────────────────────────────────────────────────────
 const STATUS_MAP = {
-  scheduled: { bg: 'rgba(251,191,36,.12)', color: '#fbbf24', border: 'rgba(251,191,36,.28)', label: 'Đã lên lịch', Icon: Clock },
-  active:    { bg: 'rgba(16,185,129,.12)', color: '#34d399', border: 'rgba(16,185,129,.28)', label: 'Đang diễn ra', Icon: Play },
-  ended:     { bg: 'rgba(139,123,181,.1)', color: '#8b7bb5', border: 'rgba(139,123,181,.2)', label: 'Đã kết thúc', Icon: Square },
-  cancelled: { bg: 'rgba(239,68,68,.1)',   color: '#f87171', border: 'rgba(239,68,68,.2)',   label: 'Đã hủy',        Icon: XCircle },
+  scheduled:      { bg: 'rgba(251,191,36,.12)', color: '#fbbf24', border: 'rgba(251,191,36,.28)', i18nKey: 'admin.meetings.status.scheduled',      Icon: Clock },
+  live:           { bg: 'rgba(16,185,129,.12)', color: '#34d399', border: 'rgba(16,185,129,.28)', i18nKey: 'admin.meetings.status.live',           Icon: Play },
+  waitingForHost: { bg: 'rgba(168,85,247,.12)', color: '#c084fc', border: 'rgba(168,85,247,.28)', i18nKey: 'admin.meetings.status.waitingForHost', Icon: AlertCircle },
+  ended:          { bg: 'rgba(139,123,181,.1)', color: '#8b7bb5', border: 'rgba(139,123,181,.2)', i18nKey: 'admin.meetings.status.ended',          Icon: Square },
 }
 
 const AVATAR_COLORS = [
@@ -47,13 +53,14 @@ const getInitials = (title = '') => title?.split(' ')?.slice(0, 2).map(w => w[0]
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
+  const { t } = useTranslation()
   const s = STATUS_MAP[status] || STATUS_MAP.ended
   const { Icon } = s
   return (
     <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border"
       style={{ background: s.bg, color: s.color, borderColor: s.border }}>
       <Icon size={10} />
-      {s.label}
+      {t(s.i18nKey)}
     </span>
   )
 }
@@ -77,6 +84,7 @@ function CopyBtn({ text }) {
 
 // ─── Action Menu ──────────────────────────────────────────────────────────────
 function ActionMenu({ meeting, onDelete, onChangeStatus }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef(null)
@@ -113,34 +121,27 @@ function ActionMenu({ meeting, onDelete, onChangeStatus }) {
           >
             <button className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-white/5 transition-colors text-left"
               style={{ color: '#8b7bb5' }} onClick={() => setOpen(false)}>
-              <Edit2 size={13} /> Chỉnh sửa
+              <Edit2 size={13} /> {t('admin.meetings.actions.edit')}
             </button>
 
-            {meeting.status === 'scheduled' && (
+            {(meeting.status === 'scheduled' || meeting.status === 'waitingForHost') && (
               <button className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-white/5 transition-colors text-left"
-                style={{ color: '#34d399' }} onClick={() => { onChangeStatus(meeting._id, 'active'); setOpen(false) }}>
-                <Play size={13} /> Bắt đầu ngay
+                style={{ color: '#34d399' }} onClick={() => { onChangeStatus(meeting.roomCode, 'start'); setOpen(false) }}>
+                <Play size={13} /> {t('admin.meetings.actions.start')}
               </button>
             )}
 
-            {meeting.status === 'active' && (
+            {meeting.status === 'live' && (
               <button className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-white/5 transition-colors text-left"
-                style={{ color: '#8b7bb5' }} onClick={() => { onChangeStatus(meeting._id, 'ended'); setOpen(false) }}>
-                <Square size={13} /> Kết thúc phòng
-              </button>
-            )}
-
-            {meeting.status === 'scheduled' && (
-              <button className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-white/5 transition-colors text-left"
-                style={{ color: '#f87171' }} onClick={() => { onChangeStatus(meeting._id, 'cancelled'); setOpen(false) }}>
-                <XCircle size={13} /> Hủy lịch
+                style={{ color: '#8b7bb5' }} onClick={() => { onChangeStatus(meeting.roomCode, 'end'); setOpen(false) }}>
+                <Square size={13} /> {t('admin.meetings.actions.end')}
               </button>
             )}
 
             <div style={{ borderTop: '1px solid #2a2245' }} />
             <button className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm hover:bg-red-500/10 transition-colors text-left"
               style={{ color: '#f87171' }} onClick={() => { onDelete(meeting.meetingId); setOpen(false) }}>
-              <Trash2 size={13} /> Xóa phòng họp
+              <Trash2 size={13} /> {t('admin.meetings.actions.delete')}
             </button>
           </div>
         </>
@@ -151,14 +152,23 @@ function ActionMenu({ meeting, onDelete, onChangeStatus }) {
 
 // ─── Add Meeting Modal ────────────────────────────────────────────────────────
 function AddMeetingModal({ onClose, onAdd }) {
-  const [form, setForm] = useState({ title: '', hostEmail: '', status: 'scheduled' })
+  const { t } = useTranslation()
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    hostEmail: '',
+    scheduledDateTime: '',
+    duration: 60,
+    requireHostToStart: false,
+  })
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
 
   const validate = () => {
     const e = {}
-    if (!form.title.trim()) e.title = 'Vui lòng nhập tiêu đề'
-    if (!form.hostEmail.trim() || !/\S+@\S+\.\S+/.test(form.hostEmail)) e.hostEmail = 'Email không hợp lệ'
+    if (!form.title.trim()) e.title = t('admin.meetings.addModal.validation.titleRequired')
+    if (!form.hostEmail.trim() || !/\S+@\S+\.\S+/.test(form.hostEmail)) e.hostEmail = t('admin.meetings.addModal.validation.hostEmailInvalid')
+    if (!form.duration || form.duration <= 0) e.duration = t('admin.meetings.addModal.validation.durationInvalid')
     setErrors(e)
     return !Object.keys(e)?.length
   }
@@ -166,20 +176,19 @@ function AddMeetingModal({ onClose, onAdd }) {
   const handleSubmit = async () => {
     if (!validate()) return
     setLoading(true)
-    await new Promise(r => setTimeout(r, 700))
-    const newMeeting = {
-      _id: Math.random().toString(36)?.slice(2),
-      meetingId: 4000 + Math.floor(Math.random() * 1000),
-      title: form.title,
-      roomCode: Math.random().toString(36)?.slice(2, 10),
-      hostEmail: form.hostEmail,
-      status: form.status,
-      createdAt: new Date().toISOString(),
-      totalParticipants: 0,
+    try {
+      await onAdd({
+        Title: form.title.trim(),
+        Description: form.description.trim() || null,
+        HostEmail: form.hostEmail.trim(),
+        ScheduledDateTime: form.scheduledDateTime ? new Date(form.scheduledDateTime).toISOString() : null,
+        Duration: Number(form.duration),
+        RequireHostToStart: form.requireHostToStart,
+      })
+      onClose()
+    } finally {
+      setLoading(false)
     }
-    onAdd(newMeeting)
-    setLoading(false)
-    onClose()
   }
 
   const fieldCls = err => `w-full px-3.5 py-2.5 rounded-xl text-sm text-white outline-none border transition-colors bg-[#0f0a1e] placeholder-[#5a4d7a] ${err ? 'border-red-500/50 focus:border-red-400' : 'border-[#2a2245] focus:border-cyan-500/60'}`
@@ -193,7 +202,7 @@ function AddMeetingModal({ onClose, onAdd }) {
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(6,182,212,.15)' }}>
               <Video size={14} style={{ color: '#22d3ee' }} />
             </div>
-            <span className="text-sm font-semibold text-white">Tạo phòng họp mới</span>
+            <span className="text-sm font-semibold text-white">{t('admin.meetings.addModal.title')}</span>
           </div>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors" style={{ color: '#8b7bb5' }}>
             ✕
@@ -202,37 +211,55 @@ function AddMeetingModal({ onClose, onAdd }) {
 
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: '#8b7bb5' }}>Tiêu đề phòng họp</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: '#8b7bb5' }}>{t('admin.meetings.addModal.titleLabel')}</label>
             <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-              placeholder="Vd: Họp chiến lược tháng 6"
+              placeholder={t('admin.meetings.addModal.titlePlaceholder')}
               className={fieldCls(errors.title)} />
             {errors.title && <p className="text-[11px] mt-1 text-red-400">{errors.title}</p>}
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: '#8b7bb5' }}>Email chủ phòng</label>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: '#8b7bb5' }}>{t('admin.meetings.addModal.hostEmailLabel')}</label>
             <input value={form.hostEmail} onChange={e => setForm(p => ({ ...p, hostEmail: e.target.value }))}
-              placeholder="host@tluhub.vn"
+              placeholder={t('admin.meetings.addModal.hostEmailPlaceholder')}
               className={fieldCls(errors.hostEmail)} />
             {errors.hostEmail && <p className="text-[11px] mt-1 text-red-400">{errors.hostEmail}</p>}
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: '#8b7bb5' }}>Trạng thái ban đầu</label>
-            <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-              className={fieldCls(false)}>
-              <option value="scheduled">Đã lên lịch</option>
-              <option value="active">Đang diễn ra</option>
-            </select>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: '#8b7bb5' }}>{t('admin.meetings.addModal.descriptionLabel')}</label>
+            <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+              placeholder={t('admin.meetings.addModal.descriptionPlaceholder')}
+              className={fieldCls(false)} />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: '#8b7bb5' }}>{t('admin.meetings.addModal.scheduledDateTimeLabel')}</label>
+              <input type="datetime-local" value={form.scheduledDateTime}
+                onChange={e => setForm(p => ({ ...p, scheduledDateTime: e.target.value }))}
+                className={fieldCls(false)} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: '#8b7bb5' }}>{t('admin.meetings.addModal.durationLabel')}</label>
+              <input type="number" min="1" value={form.duration}
+                onChange={e => setForm(p => ({ ...p, duration: e.target.value }))}
+                className={fieldCls(errors.duration)} />
+              {errors.duration && <p className="text-[11px] mt-1 text-red-400">{errors.duration}</p>}
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: '#8b7bb5' }}>
+            <input type="checkbox" checked={form.requireHostToStart}
+              onChange={e => setForm(p => ({ ...p, requireHostToStart: e.target.checked }))} />
+            {t('admin.meetings.addModal.requireHostToStart')}
+          </label>
 
           <div className="flex gap-3 mt-2">
             <button onClick={onClose}
               className="flex-1 py-2.5 rounded-xl text-sm border border-[#2a2245] hover:bg-white/5 transition-colors"
-              style={{ color: '#8b7bb5' }}>Hủy</button>
+              style={{ color: '#8b7bb5' }}>{t('admin.meetings.addModal.cancel')}</button>
             <button onClick={handleSubmit} disabled={loading}
               className="flex-[2] py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg,#06b6d4,#3b82f6)' }}>
               {loading ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
-              Tạo phòng họp
+              {t('admin.meetings.addModal.submit')}
             </button>
           </div>
         </div>
@@ -242,19 +269,21 @@ function AddMeetingModal({ onClose, onAdd }) {
 }
 
 export default function MeetingsManagement() {
-  const [meetings, setMeetings] = useState(SEED_MEETINGS)
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [modal, setModal] = useState(null)
 
-  const {data:meetingsRaw, isLoaing:isMeetingsLoading,refetch}=useGetMeetingsQuery();
+  const {data:meetingsRaw, refetch}=useGetMeetingsQuery();
   const [deleteMeetingApi, {isLoading:isDeleteLoading}]=useDeleteMeetingApiMutation()
-  console.log(meetingsRaw, "râ")
+  const [scheduleMeeting] = useScheduleMeetingMutation()
+  const [startMeeting] = useStartMeetingMutation()
+  const [endMeeting] = useEndMeetingMutation()
 
   const filtered = meetingsRaw?.filter(m => {
     const q = search.toLowerCase()
-    const matchQ = !q || m.title.toLowerCase().includes(q) || m.hostEmail.toLowerCase().includes(q) || m.roomCode.toLowerCase().includes(q)
+    const matchQ = !q || m.title?.toLowerCase().includes(q) || m.hostEmail?.toLowerCase().includes(q) || m.roomCode?.toLowerCase().includes(q)
     const matchS = statusFilter === 'all' || m.status === statusFilter
     return matchQ && matchS
   })
@@ -263,40 +292,59 @@ export default function MeetingsManagement() {
   const currentPage = Math.min(page, totalPages)
   const pageData = filtered?.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
-  const addMeeting = m => { setMeetings(p => [m, ...p]); setPage(1) }
-  const changeStatus = (id, status) => setMeetings(p => p.map(m => m._id === id ? { ...m, status } : m))
+  const addMeeting = async (payload) => {
+    try {
+      await scheduleMeeting(payload).unwrap()
+      toast.success(t('admin.meetings.toast.createSuccess'))
+      setPage(1)
+      setTimeout(refetch, 800) // chờ Kafka đẩy event sang admin-service
+    } catch (err) {
+      toast.error(err?.data?.message || t('admin.meetings.toast.createError'))
+    }
+  }
+
+  const changeStatus = async (roomCode, action) => {
+    try {
+      const fn = action === 'start' ? startMeeting : endMeeting
+      await fn(roomCode).unwrap()
+      toast.success(action === 'start' ? t('admin.meetings.toast.startSuccess') : t('admin.meetings.toast.endSuccess'))
+      setTimeout(refetch, 800)
+    } catch (err) {
+      toast.error(err?.data?.message || t('admin.meetings.toast.actionFailed'))
+    }
+  }
 
   const handleDeleteMeeting = async (id) => {
     try {
         await deleteMeetingApi(id).unwrap()
-        toast.success("Xóa phòng họp thành công", { position: 'top-right' })
+        toast.success(t('admin.meetings.toast.deleteSuccess'), { position: 'top-right' })
     } catch (error) {
-        toast.error(error?.data?.message || 'Xóa phòng họp thất bại, thử lại sau', { position: 'top-right' })
+        toast.error(error?.data?.message || t('admin.meetings.toast.deleteError'), { position: 'top-right' })
     }
   }
 
   const stats = {
-    total: meetings?.length,
-    active: meetings?.filter(m => m?.status === 'active').length,
-    scheduled: meetings?.filter(m => m?.status === 'scheduled').length,
-    ended: meetings?.filter(m => m?.status === 'ended').length,
+    total: meetingsRaw?.length ?? 0,
+    active: meetingsRaw?.filter(m => m?.status === 'live').length ?? 0,
+    scheduled: meetingsRaw?.filter(m => m?.status === 'scheduled').length ?? 0,
+    ended: meetingsRaw?.filter(m => m?.status === 'ended').length ?? 0,
   }
 
   const formatDate = iso => {
     const d = new Date(iso)
-    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
-    if(!isMeetingsLoading)  return (
+  return (
     <div className="space-y-5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Tổng phòng họp',  val: stats.total,     color: '#22d3ee', bg: 'rgba(6,182,212,.1)',   Icon: Video },
-          { label: 'Đang diễn ra',    val: stats.active,    color: '#34d399', bg: 'rgba(16,185,129,.1)',  Icon: Play },
-          { label: 'Đã lên lịch',     val: stats.scheduled, color: '#fbbf24', bg: 'rgba(251,191,36,.1)',  Icon: Clock },
-          { label: 'Đã kết thúc',     val: stats.ended,     color: '#8b7bb5', bg: 'rgba(139,123,181,.1)', Icon: Square },
+          { label: t('admin.meetings.cards.total'),     val: stats.total,     color: '#22d3ee', bg: 'rgba(6,182,212,.1)',   Icon: Video },
+          { label: t('admin.meetings.cards.live'),      val: stats.active,    color: '#34d399', bg: 'rgba(16,185,129,.1)',  Icon: Play },
+          { label: t('admin.meetings.cards.scheduled'), val: stats.scheduled, color: '#fbbf24', bg: 'rgba(251,191,36,.1)',  Icon: Clock },
+          { label: t('admin.meetings.cards.ended'),     val: stats.ended,     color: '#8b7bb5', bg: 'rgba(139,123,181,.1)', Icon: Square },
         ].map(s => (
           <div key={s.label} className="rounded-2xl p-4 border border-[#2a2245]" style={{ background: '#150f2a' }}>
             <div className="flex items-center justify-between mb-3">
@@ -316,25 +364,25 @@ export default function MeetingsManagement() {
           style={{ background: '#0f0a1e' }}>
           <Search size={14} style={{ color: '#5a4d7a' }} />
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
-            placeholder="Tìm theo tiêu đề, email, mã phòng..."
+            placeholder={t('admin.meetings.searchPlaceholder')}
             className="flex-1 bg-transparent text-sm text-white placeholder-[#5a4d7a] outline-none" />
         </div>
 
         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
           className="px-3.5 py-2.5 rounded-xl text-sm border border-[#2a2245] outline-none focus:border-cyan-500/50 transition-colors cursor-pointer"
           style={{ background: '#0f0a1e', color: '#8b7bb5' }}>
-          <option value="all">Tất cả trạng thái</option>
-          <option value="scheduled">Đã lên lịch</option>
-          <option value="active">Đang diễn ra</option>
-          <option value="ended">Đã kết thúc</option>
-          <option value="cancelled">Đã hủy</option>
+          <option value="all">{t('admin.meetings.filters.all')}</option>
+          <option value="scheduled">{t('admin.meetings.filters.scheduled')}</option>
+          <option value="live">{t('admin.meetings.filters.live')}</option>
+          <option value="waitingForHost">{t('admin.meetings.filters.waitingForHost')}</option>
+          <option value="ended">{t('admin.meetings.filters.ended')}</option>
         </select>
 
         <button onClick={() => setModal('add')}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
           style={{ background: 'linear-gradient(135deg,#a855f7,#7c3aed)' }}>
           <Plus size={15} />
-          Tạo phòng họp
+          {t('admin.meetings.createButton')}
         </button>
         <button
           onClick={refetch}
@@ -352,10 +400,15 @@ export default function MeetingsManagement() {
           <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#0f0a1e' }}>
-                {['Phòng họp', 'Mã phòng', 'Chủ phòng', 'Trạng thái'
-                // 'Người tham gia'
-                , 'Ngày tạo', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap"
+                {[
+                  t('admin.meetings.table.meeting'),
+                  t('admin.meetings.table.roomCode'),
+                  t('admin.meetings.table.host'),
+                  t('admin.meetings.table.status'),
+                  t('admin.meetings.table.createdAt'),
+                  ''
+                ].map((h, idx) => (
+                  <th key={idx} className="text-left px-4 py-3 text-xs font-medium whitespace-nowrap"
                     style={{ color: '#5a4d7a', borderBottom: '1px solid #2a2245' }}>
                     {h}
                   </th>
@@ -366,7 +419,7 @@ export default function MeetingsManagement() {
               {pageData?.length === 0 && (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-sm" style={{ color: '#5a4d7a' }}>
-                    Không tìm thấy phòng họp nào
+                    {t('admin.meetings.table.empty')}
                   </td>
                 </tr>
               )}
@@ -439,7 +492,7 @@ export default function MeetingsManagement() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#2a2245]">
           <span className="text-xs" style={{ color: '#5a4d7a' }}>
-            {filtered.length} phòng họp · trang {currentPage}/{totalPages}
+            {t('admin.meetings.table.summary', { count: filtered?.length ?? 0, current: currentPage, total: totalPages })}
           </span>
           <div className="flex gap-2">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
@@ -457,7 +510,7 @@ export default function MeetingsManagement() {
       </div>
 
       {modal === 'add' && <AddMeetingModal onClose={() => setModal(null)} onAdd={addMeeting} />}
-        {isDeleteLoading&& isMeetingsLoading&& <Loading />}
+      {isDeleteLoading && <Loading text={t('admin.meetings.toast.deleteLoading')} />}
     </div>
   )
 }

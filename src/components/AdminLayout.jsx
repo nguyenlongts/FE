@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import { useTranslation } from 'react-i18next'
+import authApi, { useLogoutUserMutation } from '../redux/features/auth/authApi'
 // import { selectAccessToken } from '../../redux/features/auth/authSlice'
 import {
   LayoutDashboard,
@@ -20,48 +22,54 @@ import {
   X,
 } from 'lucide-react'
 
-const NAV_ITEMS = [
-  {
-    section: 'Overview',
-    items: [
-      { icon: LayoutDashboard, label: 'Dashboard',     path: '/admin' },
-      // { icon: BarChart3,       label: 'Thống kê',      path: '/admin/statistics' },
-      // { icon: TrendingUp,      label: 'Báo cáo',       path: '/admin/reports' },
-    ],
-  },
-  {
-    section: 'Quản lý',
-    items: [
-      { icon: Users,     label: 'Người dùng',  path: '/admin/users' },
-      // { icon: UserCheck, label: 'Vai trò',     path: '/admin/roles' },
-      { icon: Video,     label: 'Cuộc họp',   path: '/admin/meetings' },
-    ],
-  },
-  {
-    section: 'Hệ thống',
-    items: [
-      { icon: Bell,     label: 'Thông báo', path: '/admin/notifications' },
-      { icon: Settings, label: 'Cài đặt',   path: '/admin/settings' },
-    ],
-  },
-]
-
 export default function AdminLayout() {
   const navigate   = useNavigate()
   const location   = useLocation()
   const dispatch   = useDispatch()
+  const { t, i18n } = useTranslation()
+  const [logoutUser] = useLogoutUserMutation()
   const [collapsed,    setCollapsed]    = useState(false)
   const [mobileOpen,   setMobileOpen]   = useState(false)
   const [searchQuery,  setSearchQuery]  = useState('')
   const [notifCount]                    = useState(4)
+
+  const NAV_ITEMS = [
+    {
+      section: t('admin.nav.overview'),
+      items: [
+        { icon: LayoutDashboard, label: t('admin.nav.dashboard'), path: '/admin' },
+      ],
+    },
+    {
+      section: t('admin.nav.management'),
+      items: [
+        { icon: Users, label: t('admin.nav.users'), path: '/admin/users' },
+        { icon: Video, label: t('admin.nav.meetings'), path: '/admin/meetings' },
+      ],
+    },
+    {
+      section: t('admin.nav.system'),
+      items: [
+        { icon: Bell, label: t('admin.nav.notifications'), path: '/admin/notifications' },
+        { icon: Settings, label: t('admin.nav.settings'), path: '/admin/settings' },
+      ],
+    },
+  ]
 
   const isActive = (path) =>
     path === '/admin'
       ? location.pathname === '/admin'
       : location.pathname.startsWith(path)
 
-  const handleLogout = () => {
-    // dispatch(logout())
+  const handleLogout = async () => {
+    try {
+      await logoutUser().unwrap()
+    } catch {
+      // server lỗi thì vẫn clear ở client
+    }
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    dispatch(authApi.util.resetApiState())
     navigate('/login')
   }
 
@@ -103,7 +111,7 @@ export default function AdminLayout() {
             <div className="overflow-hidden">
               <p className="text-white font-semibold text-sm leading-tight whitespace-nowrap">TLUHub</p>
               <p className="text-[11px] leading-tight whitespace-nowrap" style={{ color: '#8b7bb5' }}>
-                Admin Panel
+                {t('admin.nav.panelName')}
               </p>
             </div>
           )}
@@ -183,7 +191,7 @@ export default function AdminLayout() {
             {!collapsed && (
               <span className="text-sm font-medium group-hover:text-red-400 transition-colors"
                 style={{ color: '#8b7bb5' }}>
-                Đăng xuất
+                {t('admin.nav.logout')}
               </span>
             )}
           </button>
@@ -206,10 +214,10 @@ export default function AdminLayout() {
 
           <div className="hidden md:block">
             <h1 className="text-white text-base font-semibold leading-tight">
-              {NAV_ITEMS.flatMap(g => g.items).find(i => isActive(i.path))?.label ?? 'Admin'}
+              {NAV_ITEMS.flatMap(g => g.items).find(i => isActive(i.path))?.label ?? t('admin.nav.admin')}
             </h1>
             <p className="text-[11px]" style={{ color: '#5a4d7a' }}>
-              {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+              {new Date().toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'vi-VN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
             </p>
           </div>
 
@@ -222,7 +230,7 @@ export default function AdminLayout() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm..."
+              placeholder={t('admin.nav.searchPlaceholder')}
               className="flex-1 bg-transparent text-sm text-white placeholder-[#5a4d7a] outline-none"
             />
             <kbd
@@ -234,6 +242,22 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            {/* Language switcher */}
+            <div className="flex items-center rounded-xl border border-[#2a2245] overflow-hidden" style={{ background: '#0f0a1e' }}>
+              {['vi', 'en'].map(lng => (
+                <button
+                  key={lng}
+                  onClick={() => i18n.changeLanguage(lng)}
+                  className={`px-2.5 py-1.5 text-[11px] font-semibold uppercase transition-colors ${
+                    i18n.language === lng
+                      ? 'bg-violet-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}>
+                  {lng}
+                </button>
+              ))}
+            </div>
+
             {/* Notification bell */}
             <button
               className="relative w-9 h-9 flex items-center justify-center rounded-xl border border-[#2a2245] hover:bg-white/5 transition-colors"
@@ -262,7 +286,7 @@ export default function AdminLayout() {
                 A
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-white text-xs font-medium leading-tight">Admin</p>
+                <p className="text-white text-xs font-medium leading-tight">{t('admin.nav.admin')}</p>
                 <p className="text-[10px] leading-tight" style={{ color: '#8b7bb5' }}>
                   admin@tluhub.vn
                 </p>

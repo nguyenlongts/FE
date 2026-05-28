@@ -8,9 +8,12 @@ import {
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../../redux/features/auth/authSlice";
 import MeetingCard from "../../components/MeetingCard";
+import ScheduleMeetingModal from "./ScheduleMeetingModal";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 const MeetingPage = () => {
+  const { t } = useTranslation();
   const user = useSelector(selectCurrentUser);
 
   const { data: meetingsDataRaw, isLoading: isDataLoading } =
@@ -24,6 +27,7 @@ const MeetingPage = () => {
   const [deleteMeeting] = useDeleteMeetingApiMutation();
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   // ✅ useMemo không bị lỗi vì dùng optional chaining
   const meetings = useMemo(() => {
@@ -47,10 +51,10 @@ const MeetingPage = () => {
     try {
       await deleteMeeting(deleteTarget?.id).unwrap();
       setDeleteTarget(null);
-      toast.success("Đã xóa phòng thành công");
+      toast.success(t('meetingsPage.deleteSuccess'));
     } catch (error) {
       console.error(error);
-      toast.error("Xảy ra lỗi khi xóa phòng");
+      toast.error(t('meetingsPage.deleteError'));
     }
   };
 
@@ -63,7 +67,7 @@ const MeetingPage = () => {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#12141f]/70 backdrop-blur-sm">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-800 border-t-purple-400 mx-auto mb-3" />
-            <p className="text-white/50 text-sm">Đang tải...</p>
+            <p className="text-white/50 text-sm">{t('meetingsPage.loading')}</p>
           </div>
         </div>
       )}
@@ -71,17 +75,20 @@ const MeetingPage = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-white text-2xl font-semibold">Meetings</h1>
+          <h1 className="text-white text-2xl font-semibold">{t('meetingsPage.title')}</h1>
           <p className="text-white/40 text-sm mt-1">
-            {meetings.length} total ·{" "}
-            {meetings.filter((m) => m.status === "Scheduled").length} upcoming
+            {t('meetingsPage.totalSummary', {
+              total: meetings.length,
+              upcoming: meetings.filter((m) => m.status === "Scheduled").length,
+            })}
           </p>
         </div>
         <button
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white self-start sm:self-auto"
+          onClick={() => setScheduleOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white self-start sm:self-auto cursor-pointer hover:opacity-90 transition-opacity"
           style={{ background: "linear-gradient(135deg, #a855f7, #7c3aed)" }}
         >
-          <Plus size={16} /> New Meeting
+          <Plus size={16} /> {t('meetingsPage.newMeeting')}
         </button>
       </div>
 
@@ -94,7 +101,7 @@ const MeetingPage = () => {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search meetings by name..."
+          placeholder={t('meetingsPage.searchPlaceholder')}
           className="w-full rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-white/30 border border-white/8 outline-none focus:border-purple-500 transition-colors"
           style={{ background: "#1e2235" }}
         />
@@ -126,11 +133,18 @@ const MeetingPage = () => {
               <Video size={24} className="text-white/20" />
             </div>
             <p className="text-white/40 text-sm">
-              {search ? `No meetings found for "${search}"` : "Chưa có meeting nào"}
+              {search ? t('meetingsPage.noResults', { q: search }) : t('meetingsPage.noMeetings')}
             </p>
           </div>
         )
       )}
+
+      <ScheduleMeetingModal
+        isOpen={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        hostEmail={user?.email}
+        type="schedule"
+      />
     </div>
   );
 };

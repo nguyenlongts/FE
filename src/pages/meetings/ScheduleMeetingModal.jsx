@@ -4,15 +4,15 @@ import { useScheduleMeetingMutation, useUpdateMeetingApiMutation } from "../../r
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
-
-const optionsRequireHostToStart = [
-  { value: true,  label: "Cần host để bắt đầu" },
-  { value: false, label: "Không cần host" },
-];
+import { useTranslation } from "react-i18next";
 
 const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) => {
-  console.log(editMeeting)
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const optionsRequireHostToStart = [
+    { value: true,  label: t('scheduleMeetingModal.requireHostYes') },
+    { value: false, label: t('scheduleMeetingModal.requireHostNo') },
+  ];
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -45,23 +45,23 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
       description: formData.description,
       scheduledDateTime: localDate.toISOString(),
       duration: Number(formData.duration),
-      requireHostToStart: formData.requireHostToStart,
+      requireHostToStart: type === "now" ? false : formData.requireHostToStart,
     };
 
     try {
     if (type === "edit") {
       // Gửi id của meeting cần update
       await updateMeeting({ id: editMeeting.id,roomCode:editMeeting.roomCode, ...payload }).unwrap();
-      toast.success("Cập nhật thành công");
+      toast.success(t('scheduleMeetingModal.updateSuccess'));
     } else {
       const res = await scheduleMeeting(payload).unwrap();
       if (type === "now") navigate(`${res.data.meetingLink}`);
-      toast.success("Lên lịch thành công");
+      toast.success(t('scheduleMeetingModal.scheduleSuccess'));
     }
     onClose();
   } catch (err) {
     console.error(err);
-    toast.error("Đã xảy ra lỗi");
+    toast.error(t('scheduleMeetingModal.error'));
   }
   };
 
@@ -105,9 +105,13 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
             </div>
             <div>
               <p className="text-white text-sm font-medium">
-                {type === "schedule" ? "Schedule New Meeting" : "Start Meeting Now"}
+                {isEdit
+                  ? t('scheduleMeetingModal.editTitle')
+                  : type === "schedule"
+                    ? t('scheduleMeetingModal.scheduleTitle')
+                    : t('scheduleMeetingModal.nowTitle')}
               </p>
-              <p className="text-white/70 text-xs">Start New Meeting</p>
+              <p className="text-white/70 text-xs">{t('scheduleMeetingModal.subtitle')}</p>
             </div>
           </div>
           <button
@@ -122,12 +126,12 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
         <div className="flex flex-col gap-4 p-6">
           {/* Title */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-white/50">Title</label>
+            <label className="text-xs uppercase tracking-wider text-white/50">{t('scheduleMeetingModal.title')}</label>
             <input
               name="title"
               value={formData.title}
               onChange={handleChange}
-              placeholder="Enter meeting title..."
+              placeholder={t('scheduleMeetingModal.titlePlaceholder')}
               className="w-full rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-white/30 border border-white/10 outline-none focus:border-purple-500 transition-colors"
               style={{ background: "rgba(255,255,255,0.06)" }}
             />
@@ -135,12 +139,12 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
 
           {/* Description */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-white/50">Description</label>
+            <label className="text-xs uppercase tracking-wider text-white/50">{t('scheduleMeetingModal.description')}</label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
-              placeholder="Enter description..."
+              placeholder={t('scheduleMeetingModal.descriptionPlaceholder')}
               rows={3}
               className="w-full rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-white/30 border border-white/10 outline-none focus:border-purple-500 transition-colors resize-none"
               style={{ background: "rgba(255,255,255,0.06)" }}
@@ -153,7 +157,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
               <div className="flex-1 flex flex-col gap-1.5">
                 <label className="text-xs uppercase tracking-wider text-white/50 flex items-center gap-1.5">
                   <Calendar size={11} />
-                  Date & Time
+                  {t('scheduleMeetingModal.dateTime')}
                 </label>
                 <input
                   type="datetime-local"
@@ -168,7 +172,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
             <div className="flex-1 flex flex-col gap-1.5">
               <label className="text-xs uppercase tracking-wider text-white/50 flex items-center gap-1.5">
                 <Clock size={11} />
-                Duration
+                {t('scheduleMeetingModal.duration')}
               </label>
               <select
                 name="duration"
@@ -177,10 +181,9 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
                 className="w-full rounded-lg px-3.5 py-2.5 text-sm text-white border border-white/10 outline-none focus:border-purple-500 transition-colors cursor-pointer"
                 style={{ background: "#1e2235" }}
               >
-                <option value={30}>30 minutes</option>
-                <option value={60}>60 minutes</option>
-                <option value={90}>90 minutes</option>
-                <option value={120}>120 minutes</option>
+                {[30, 60, 90, 120].map((m) => (
+                  <option key={m} value={m}>{t('scheduleMeetingModal.minutes', { count: m })}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -189,7 +192,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs uppercase tracking-wider text-white/50 flex items-center gap-1.5">
               <User size={11} />
-              Host
+              {t('scheduleMeetingModal.host')}
             </label>
             <div
               className="flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 border border-white/10"
@@ -206,57 +209,56 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
                 className="text-white/40 text-xs px-2 py-0.5 rounded-full"
                 style={{ background: "rgba(255,255,255,0.08)" }}
               >
-                Host
+                {t('scheduleMeetingModal.hostBadge')}
               </span>
             </div>
           </div>
 
-          {/* Require Host To Start */}
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs uppercase tracking-wider text-white/50">
-              Require Host To Start
-            </label>
-            <div
-              className="flex flex-col gap-2 rounded-lg px-3.5 py-3 border border-white/10"
-              style={{ background: "rgba(255,255,255,0.06)" }}
-            >
-              {optionsRequireHostToStart.map((option) => (
-                <label
-                  key={String(option.value)}
-                  className="flex items-center gap-3 cursor-pointer group"
-                >
-                  <div className="relative flex items-center justify-center">
-                    <input
-                      type="radio"
-                      name="requireHostToStart"
-
-                      checked={formData.requireHostToStart === option.value}
-                      onChange={() =>
-                        setFormData((prev) => ({ ...prev, requireHostToStart: option.value }))
-                      }
-                      className="sr-only"
-                    />
-   
-                    <div
-                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                        formData.requireHostToStart === option.value
-                          ? "border-purple-500"
-                          : "border-white/30 group-hover:border-white/50"
-                      }`}
-                    >
-                      {formData.requireHostToStart === option.value && (
-                        <div className="w-2 h-2 rounded-full bg-purple-500" />
-                      )}
+          {/* Require Host To Start — ẩn khi Start Now (host đang ở phòng rồi) */}
+          {type !== "now" && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs uppercase tracking-wider text-white/50">
+                {t('scheduleMeetingModal.requireHostToStart')}
+              </label>
+              <div
+                className="flex flex-col gap-2 rounded-lg px-3.5 py-3 border border-white/10"
+                style={{ background: "rgba(255,255,255,0.06)" }}
+              >
+                {optionsRequireHostToStart.map((option) => (
+                  <label
+                    key={String(option.value)}
+                    className="flex items-center gap-3 cursor-pointer group"
+                  >
+                    <div className="relative flex items-center justify-center">
+                      <input
+                        type="radio"
+                        name="requireHostToStart"
+                        checked={formData.requireHostToStart === option.value}
+                        onChange={() =>
+                          setFormData((prev) => ({ ...prev, requireHostToStart: option.value }))
+                        }
+                        className="sr-only"
+                      />
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                          formData.requireHostToStart === option.value
+                            ? "border-purple-500"
+                            : "border-white/30 group-hover:border-white/50"
+                        }`}
+                      >
+                        {formData.requireHostToStart === option.value && (
+                          <div className="w-2 h-2 rounded-full bg-purple-500" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-sm text-white/80 group-hover:text-white transition-colors">
-                    {option.label}
-                  </span>
-                </label>
-              ))}
+                    <span className="text-sm text-white/80 group-hover:text-white transition-colors">
+                      {option.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 mt-1">
@@ -264,7 +266,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
               onClick={handleClose}
               className="flex-1 cursor-pointer py-3 rounded-lg text-sm text-white/70 border border-white/15 hover:border-white/30 transition-colors"
             >
-              Cancel
+              {t('scheduleMeetingModal.cancel')}
             </button>
             <button
               onClick={handleSubmit}
@@ -273,7 +275,11 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
               style={{ background: "linear-gradient(135deg, #a855f7, #7c3aed)" }}
             >
               {isEdit ? <Pencil size={16} /> : <Video size={16} />}
-              {isLoading ? "Loading..." : isEdit ? "Save Changes" : "Create Meeting"}
+              {isLoading
+                ? t('scheduleMeetingModal.loading')
+                : isEdit
+                  ? t('scheduleMeetingModal.saveChanges')
+                  : t('scheduleMeetingModal.createMeeting')}
             </button>
           </div>
         </div>
