@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import {useSelector} from 'react-redux'
 import { selectAccessToken, selectCurrentUser } from "../../redux/features/auth/authSlice";
 import { useGenerateJaasTokenMutation } from "../../redux/features/jass/jaasApi";
+import { useEndMeetingMutation } from "../../redux/features/meetings/meetingsApi";
+import { useTranslation } from "react-i18next";
 
 const JAAS_CONFIG = {
   appId:          "vpaas-magic-cookie-xxxxxxx",
@@ -13,6 +15,7 @@ const JAAS_CONFIG = {
 
 
 export default function MeetingRoom() {
+  const { t } = useTranslation();
   const { roomName } = useParams();
   const navigate     = useNavigate();
   const token=useSelector(selectAccessToken);
@@ -43,9 +46,10 @@ export default function MeetingRoom() {
 
   const tokenGuest=sessionStorage.getItem("joinToken")
   const authHeader = { Authorization: `Bearer ${token?token:tokenGuest}`};
-  const [generateJaasToken]=useGenerateJaasTokenMutation()
+  const [generateJaasToken] = useGenerateJaasTokenMutation()
+  const [endMeeting] = useEndMeetingMutation()
 
-  //check meeting status
+
   useEffect(() => {
     (async () => {
       try {
@@ -153,7 +157,7 @@ export default function MeetingRoom() {
       script.async   = true;
       script.onload  = initJitsi;
       script.onerror = () =>
-        setStatus(s => ({ ...s, error: "Không thể tải Jitsi. Kiểm tra kết nối." }));
+        setStatus(s => ({ ...s, error: t('meetingRoom.jitsiLoadError') }));
       document.body.appendChild(script);
     };
 
@@ -178,9 +182,17 @@ export default function MeetingRoom() {
           roomFullName = `${res.appId}/${res.roomName}`;
           jaasToken = res.token;
         } else {
-          // Guest / participant: vào thẳng không cần JWT
-          roomFullName = `${import.meta.env.VITE_JAAS_APP_ID}/${roomName}`;
-          jaasToken = null;
+          // Guest: lấy JWT từ backend với isModerator: false để có đúng appId
+          const res = await generateJaasToken({
+            roomName,
+            userName: userName || "Guest",
+            email: userEmail,
+            isModerator: false,
+            avatarUrl: "",
+            expiresInMinutes: 120,
+          }).unwrap();
+          roomFullName = `${res.appId}/${res.roomName}`;
+          jaasToken = res.token;
         }
 
         // Khởi tạo Jitsi
@@ -197,6 +209,7 @@ export default function MeetingRoom() {
             prejoinPageEnabled:  false,
             enableWelcomePage:   false,
             disableDeepLinking:  true,
+            inviteUrl:           `${window.location.origin}/meet/${roomName}`,
           },
           interfaceConfigOverwrite: {
             SHOW_JITSI_WATERMARK:      false,
@@ -211,15 +224,17 @@ export default function MeetingRoom() {
         apiRef.current.addEventListener("videoConferenceJoined", () => {
           setJitsiReady(true);
           setHasJoined(true);
+          try {
+            apiRef.current?.executeCommand("overwriteConfig", {
+              inviteUrl: `${window.location.origin}/meet/${roomName}`,
+            });
+          } catch (_) {}
         });
 
 
         apiRef.current.addEventListener("videoConferenceLeft", async () => {
-          // Host rời → end meeting
           if (isModerator) {
-            await fetch(`${JAAS_CONFIG.meetingUrl}/${roomName}/end`, {
-              method: "POST", headers: authHeader,
-            }).catch(() => {});
+            await endMeeting(roomName).catch(() => {});
           }
           goHome();
         });
@@ -227,7 +242,8 @@ export default function MeetingRoom() {
         apiRef.current.addEventListener("readyToClose", goHome);
 
       } catch (err) {
-        setStatus(s => ({ ...s, error: err.message }));
+        const msg = err?.data?.error || err?.data?.message || err?.message || "Không thể khởi tạo phòng họp";
+        setStatus(s => ({ ...s, error: msg }));
         console.log(err);
       }
     };
@@ -255,14 +271,14 @@ export default function MeetingRoom() {
   // Host đã end meeting
   if (hostEnded) return (
     <div className="h-screen flex items-center justify-center">
-      <p className="text-xl text-gray-600">Cuộc họp đã kết thúc. Đang chuyển trang...</p>
+      <p className="text-xl text-gray-600">{t('meetingRoom.hostEnded')}</p>
     </div>
   );
 
 
   if (status.needsHost) return (
     <div className="h-screen flex items-center justify-center">
-      <p className="text-gray-500">⏳ Đang chờ Host bắt đầu cuộc họp...</p>
+      <p className="text-gray-500">{t('meetingRoom.waitingHost')}</p>
     </div>
   );
 
@@ -272,7 +288,7 @@ export default function MeetingRoom() {
       <p className="text-red-500">{status.error}</p>
       <button onClick={() => window.location.reload()}
         className="px-4 py-2 bg-indigo-600 text-white rounded-lg">
-        Thử lại
+        {t('meetingRoom.retry')}
       </button>
     </div>
   );
@@ -289,7 +305,7 @@ export default function MeetingRoom() {
         <div className="absolute inset-0 flex items-center justify-center bg-gray-800/90">
           <div className="text-center text-white">
             <div className="animate-spin h-12 w-12 border-b-2 border-indigo-400 rounded-full mx-auto mb-4" />
-            <p>Đang tải phòng họp...</p>
+            <p>{t('meetingRoom.loadingRoom')}</p>
             <p>{status.error}</p>
             <p className="text-sm text-gray-400 mt-1">{roomName}</p>
           </div>
