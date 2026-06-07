@@ -255,7 +255,8 @@
     "saveChanges": "Lưu thay đổi",
     "updateSuccess": "Cập nhật thành công",
     "scheduleSuccess": "Lên lịch thành công",
-    "error": "Đã xảy ra lỗi"
+    "error": "Đã xảy ra lỗi",
+    "pastDateError": "Không thể tạo cuộc họp trong quá khứ"
   },
   "meetingCard": {
     "joinNow": "Tham gia ngay",

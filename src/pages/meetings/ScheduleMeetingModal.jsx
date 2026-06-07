@@ -38,6 +38,14 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
   const handleSubmit = async () => {
     if (!formData.title || !formData.scheduledDateTime) return;
 
+    if (type !== "now") {
+      const selectedDate = new Date(formData.scheduledDateTime);
+      if (selectedDate < new Date()) {
+        toast.error(t('scheduleMeetingModal.pastDateError'));
+        return;
+      }
+    }
+
     const localDate = new Date(formData.scheduledDateTime);
     const payload = {
       hostEmail,
@@ -164,6 +172,7 @@ const ScheduleMeetingModal = ({ isOpen, onClose, hostEmail, type,editMeeting }) 
                   name="scheduledDateTime"
                   value={formData.scheduledDateTime}
                   onChange={handleChange}
+                  min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                   className="w-full rounded-lg px-3.5 py-2.5 text-xs text-white border border-white/10 outline-none focus:border-purple-500 transition-colors"
                   style={{ background: "rgba(255,255,255,0.06)", colorScheme: "dark" }}
                 />

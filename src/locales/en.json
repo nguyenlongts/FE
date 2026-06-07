@@ -255,7 +255,8 @@
     "saveChanges": "Save Changes",
     "updateSuccess": "Updated successfully",
     "scheduleSuccess": "Scheduled successfully",
-    "error": "Something went wrong"
+    "error": "Something went wrong",
+    "pastDateError": "Cannot create a meeting in the past"
   },
   "meetingCard": {
     "joinNow": "Join Now",
