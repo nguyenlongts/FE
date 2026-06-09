@@ -11,14 +11,7 @@ Giao diện người dùng của hệ thống quản lý cuộc họp TLUMeeting
 | React Router DOM v7 | Client-side routing |
 | Tailwind CSS v4 | Utility-first styling |
 | Ant Design v6 | UI component library |
-| Lucide React | Icon set |
-| react-i18next + i18next | Đa ngôn ngữ (vi/en) |
-| react-hot-toast | Toast notification |
-| @microsoft/signalr | Real-time notification (WebSocket) |
-| framer-motion | Animation |
-| jwt-decode | Decode JWT token ở client |
-| axios | HTTP client |
-| xlsx | Export Excel |
+
 
 ## Biến môi trường
 
